@@ -1212,9 +1212,9 @@ int main(int argc, char** argv) {
       FLAGS_write_from = n64;
     } else if (sscanf(argv[i], "--write_key_upto=%ld%c", &n64, &junk) == 1) {
       FLAGS_write_upto = n64;
-    } else if (sscanf(argv[i], "--mirror=%d%c", &n, &junk) == 1) {
+    } else if (sscanf(argv[i], "--hlsm_full_mirror=%d%c", &n, &junk) == 1) {
       hlsm::config::full_mirror = n;
-    } else if (strncmp(argv[i], "--mirror_path=", 14) == 0) {
+    } else if (strncmp(argv[i], "--hlsm_second_storage_path=", 14) == 0) {
       hlsm::config::secondary_storage_path = argv[i] + 14;
     } else if (sscanf(argv[i], "--file_size=%d%c", &n, &junk) == 1) {
       leveldb::config::kTargetFileSize = n * 1048576; // in MiB
