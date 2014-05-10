@@ -31,6 +31,7 @@ const double Histogram::kBucketLimit[kNumBuckets] = {
 };
 
 void Histogram::Clear() {
+	mu_.Lock();
   min_ = kBucketLimit[kNumBuckets-1];
   max_ = 0;
   num_ = 0;
@@ -39,6 +40,7 @@ void Histogram::Clear() {
   for (int i = 0; i < kNumBuckets; i++) {
     buckets_[i] = 0;
   }
+	mu_.Unlock();
 }
 
 void Histogram::Add(double value) {
@@ -55,6 +57,22 @@ void Histogram::Add(double value) {
   sum_squares_ += (value * value);
 }
 
+void Histogram::AtomicAdd(double value) {
+  // Linear search is fast enough for our usage in db_bench
+  int b = 0;
+	mu_.Lock();
+  while (b < kNumBuckets - 1 && kBucketLimit[b] <= value) {
+    b++;
+  }
+  buckets_[b] += 1.0;
+  if (min_ > value) min_ = value;
+  if (max_ < value) max_ = value;
+  num_++;
+  sum_ += value;
+  sum_squares_ += (value * value);
+	mu_.Unlock();
+}
+
 void Histogram::Merge(const Histogram& other) {
   if (other.min_ < min_) min_ = other.min_;
   if (other.max_ > max_) max_ = other.max_;
@@ -64,6 +82,14 @@ void Histogram::Merge(const Histogram& other) {
   for (int b = 0; b < kNumBuckets; b++) {
     buckets_[b] += other.buckets_[b];
   }
+}
+
+double Histogram::Sum() const {
+	return sum_;
+}
+
+double Histogram::Num() const {
+	return num_;
 }
 
 double Histogram::Median() const {

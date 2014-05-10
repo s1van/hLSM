@@ -6,6 +6,7 @@
 #define STORAGE_LEVELDB_UTIL_HISTOGRAM_H_
 
 #include <string>
+#include "port/port.h"
 
 namespace leveldb {
 
@@ -16,7 +17,15 @@ class Histogram {
 
   void Clear();
   void Add(double value);
+  void AtomicAdd(double value);
   void Merge(const Histogram& other);
+
+  double Sum() const;
+  double Num() const;
+  double Median() const;
+  double Percentile(double p) const;
+  double Average() const;
+  double StandardDeviation() const;
 
   std::string ToString() const;
 
@@ -26,15 +35,11 @@ class Histogram {
   double num_;
   double sum_;
   double sum_squares_;
+  port::Mutex mu_;
 
   enum { kNumBuckets = 154 };
   static const double kBucketLimit[kNumBuckets];
   double buckets_[kNumBuckets];
-
-  double Median() const;
-  double Percentile(double p) const;
-  double Average() const;
-  double StandardDeviation() const;
 };
 
 }  // namespace leveldb

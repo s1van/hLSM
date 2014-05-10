@@ -9,9 +9,6 @@
 #include <unistd.h>
 #include "util/hash.h"
 
-extern int MIRROR_ENABLE;
-extern const char *MIRROR_PATH;
-
 #define BLKSIZE 4096
 
 /************************** Configuration *****************************/
@@ -25,6 +22,16 @@ extern int kLevelRatio;  // enlarge the level size by ten when the db levels up
 
 }
 
+namespace hlsm {
+
+namespace config {
+extern int full_mirror;
+extern const char *secondary_storage_path;
+}
+
+}
+
+/*********************** Configuration (END) **************************/
 
 #define COMPACT_READ_ON_SECONDARY 1
 #define HLSM_CPREFETCH false //for compaction

@@ -5,12 +5,17 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "db/db_impl.h"
 #include "db/version_set.h"
 #include "leveldb/cache.h"
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/write_batch.h"
+#include "leveldb/hlsm.h"
 #include "port/port.h"
 #include "util/crc32c.h"
 #include "util/histogram.h"
@@ -102,6 +107,36 @@ static bool FLAGS_use_existing_db = false;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 
+/************* Extened Flags *****************/
+//Percent of read requests in r/w benchmark
+static int FLAGS_read_percent = 100;
+
+//key range of requests in r/w benchmark
+static int64_t FLAGS_write_from = 0;
+static int64_t FLAGS_write_upto = -1;
+static int64_t FLAGS_write_span = -1;
+
+static int64_t FLAGS_read_from = 0;
+static int64_t FLAGS_read_upto = -1;
+static int64_t FLAGS_read_span = -1;
+
+static double FLAGS_countdown = -1;
+
+static double rwrandom_wspeed = 0;
+
+static int rwrandom_read_completed = 0;
+static int rwrandom_write_completed = 0;
+static const int RW_RELAX=1024;
+static const int RW_WAIT_MS=8192;
+
+static int MONITOR_INTERVAL = -1; //microseconds
+static leveldb::Histogram intv_read_hist_;
+static leveldb::Histogram intv_write_hist_;
+static double intv_start_;
+static leveldb::port::Mutex intv_mu_;
+static leveldb::port::Mutex rwrandom_read_mu_;
+/************* Extened Flags (END) *****************/
+
 namespace leveldb {
 
 namespace {
@@ -164,20 +199,31 @@ class Stats {
   double finish_;
   double seconds_;
   int done_;
+  int read_done_;
+  int write_done_;
   int next_report_;
   int64_t bytes_;
   double last_op_finish_;
   Histogram hist_;
+  Histogram read_hist_;
+  Histogram write_hist_;
   std::string message_;
+  double intv_end_;
 
  public:
+	int tid_;
+	int pid_;
   Stats() { Start(); }
 
   void Start() {
     next_report_ = 100;
     last_op_finish_ = start_;
     hist_.Clear();
+    read_hist_.Clear();
+    write_hist_.Clear();
     done_ = 0;
+    read_done_ = 0;
+    write_done_ = 0;
     bytes_ = 0;
     seconds_ = 0;
     start_ = Env::Default()->NowMicros();
@@ -187,7 +233,11 @@ class Stats {
 
   void Merge(const Stats& other) {
     hist_.Merge(other.hist_);
+    read_hist_.Merge(other.read_hist_);
+    write_hist_.Merge(other.write_hist_);
     done_ += other.done_;
+    read_done_ += other.read_done_;
+    write_done_ += other.write_done_;
     bytes_ += other.bytes_;
     seconds_ += other.seconds_;
     if (other.start_ < start_) start_ = other.start_;
@@ -204,6 +254,30 @@ class Stats {
 
   void AddMessage(Slice msg) {
     AppendWithSpace(&message_, msg);
+  }
+
+  void FinishedReadOp() {
+    if (FLAGS_histogram) {
+      double now = Env::Default()->NowMicros();
+      double micros = now - last_op_finish_;
+      read_hist_.Add(micros);
+      intv_read_hist_.AtomicAdd(micros);	
+    }
+    read_done_++;
+
+    FinishedSingleOp();
+  }
+
+  void FinishedWriteOp() {
+    if (FLAGS_histogram) {
+      double now = Env::Default()->NowMicros();
+      double micros = now - last_op_finish_;
+      write_hist_.Add(micros);
+      intv_write_hist_.AtomicAdd(micros); 
+    }
+    write_done_++;
+
+    FinishedSingleOp();
   }
 
   void FinishedSingleOp() {
@@ -230,6 +304,24 @@ class Stats {
       fprintf(stderr, "... finished %d ops%30s\r", done_, "");
       fflush(stderr);
     }
+
+		intv_end_ = Env::Default()->NowMicros();
+		if (MONITOR_INTERVAL != -1 && intv_end_ - intv_start_ > MONITOR_INTERVAL) {
+			intv_mu_.Lock();
+			if (intv_end_ - intv_start_ > MONITOR_INTERVAL) {
+    	  		fprintf(stdout, "PID_TID_RL_WL_RD_WD_RT_WT\t%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", 
+					pid_, tid_,
+					intv_read_hist_.Average(), intv_write_hist_.Average(), 
+					intv_read_hist_.StandardDeviation(), intv_write_hist_.StandardDeviation(), 
+					intv_read_hist_.Num() * 1000000 /(intv_end_ - intv_start_),
+					intv_write_hist_.Num() * 1000000 /(intv_end_ - intv_start_));
+
+				intv_start_ = intv_end_;
+				intv_read_hist_.Clear();
+				intv_write_hist_.Clear();
+			}
+			intv_mu_.Unlock();
+		}
   }
 
   void AddBytes(int64_t n) {
@@ -242,24 +334,29 @@ class Stats {
     if (done_ < 1) done_ = 1;
 
     std::string extra;
+    double elapsed = (finish_ - start_) * 1e-6;
     if (bytes_ > 0) {
       // Rate is computed on actual elapsed time, not the sum of per-thread
       // elapsed times.
-      double elapsed = (finish_ - start_) * 1e-6;
       char rate[100];
       snprintf(rate, sizeof(rate), "%6.1f MB/s",
                (bytes_ / 1048576.0) / elapsed);
       extra = rate;
     }
-    AppendWithSpace(&extra, message_);
+    AppendWithSpace(&extra, message_);	// only involve one thread
 
-    fprintf(stdout, "%-12s : %11.3f micros/op;%s%s\n",
+    fprintf(stdout, "%-12s : %11.3f micros/op;\t%11.3f ops/s%s%s\n",
             name.ToString().c_str(),
             seconds_ * 1e6 / done_,
+            done_ / elapsed,
             (extra.empty() ? "" : " "),
             extra.c_str());
     if (FLAGS_histogram) {
       fprintf(stdout, "Microseconds per op:\n%s\n", hist_.ToString().c_str());
+      if (read_done_ > 0)
+        fprintf(stdout, "Microseconds per ReadOp:\n%s\n", read_hist_.ToString().c_str());
+      if (write_done_ > 0)
+        fprintf(stdout, "Microseconds per WriteOp:\n%s\n", write_hist_.ToString().c_str());
     }
     fflush(stdout);
   }
@@ -293,7 +390,9 @@ struct ThreadState {
 
   ThreadState(int index)
       : tid(index),
-        rand(1000 + index) {
+        rand( ((int) Env::Default()->NowMicros()/1000000 )+ index) {
+			stats.tid_ = index;
+			stats.pid_ = getpid();
   }
 };
 
@@ -503,6 +602,9 @@ class Benchmark {
         PrintStats("leveldb.stats");
       } else if (name == Slice("sstables")) {
         PrintStats("leveldb.sstables");
+      } else if (name == Slice("rwrandom")) {
+        method = &Benchmark::RWRandom_Write;
+        MONITOR_INTERVAL = 2000000;
       } else {
         if (name != Slice()) {  // No error message for empty name
           fprintf(stderr, "unknown benchmark '%s'\n", name.ToString().c_str());
@@ -572,6 +674,11 @@ class Benchmark {
     shared.num_done = 0;
     shared.start = false;
 
+	//Intialization for request latency monitoring
+	intv_read_hist_.Clear();
+	intv_write_hist_.Clear();
+	intv_start_ = Env::Default()->NowMicros();
+
     ThreadArg* arg = new ThreadArg[n];
     for (int i = 0; i < n; i++) {
       arg[i].bm = this;
@@ -580,6 +687,8 @@ class Benchmark {
       arg[i].thread = new ThreadState(i);
       arg[i].thread->shared = &shared;
       Env::Default()->StartThread(ThreadBody, &arg[i]);
+      if (method == &Benchmark::RWRandom_Write) // multiple read threads, one write thread
+         method = &Benchmark::RWRandom_Read;
     }
 
     shared.mu.Lock();
@@ -695,6 +804,7 @@ class Benchmark {
     options.write_buffer_size = FLAGS_write_buffer_size;
     options.max_open_files = FLAGS_open_files;
     options.filter_policy = filter_policy_;
+    options.compression = leveldb::kNoCompression;
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
@@ -782,6 +892,129 @@ class Benchmark {
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+  }
+
+
+  void RWRandom_Read(ThreadState* thread) {
+    ReadOptions options;
+    std::string value;
+
+    RandomGenerator gen;
+    WriteBatch batch;
+    Status s;
+    int64_t bytes = 0;
+    bool isRead;
+	
+    time_t begin, now;
+
+    int found = 0;
+    int bnum = 0;
+    batch.Clear();
+
+    time(&begin);
+    int i = 0;
+    int rnum = (int)(((double)num_ * FLAGS_read_percent) / 100);
+		if (rwrandom_wspeed > 0)
+			rnum = num_ * 10;
+
+    for (i = 0; i < rnum; i++) {
+      char key[100];
+			time(&now);
+      if ( (rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) <= rwrandom_write_completed + RW_RELAX)||
+			(rwrandom_wspeed == 0 &&
+			rwrandom_read_completed < (rwrandom_read_completed + rwrandom_write_completed) * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
+        const int64_t k = thread->rand.Next64() % FLAGS_read_span;
+        snprintf(key, sizeof(key), "%020ld", k);
+        if (db_->Get(options, key, &value).ok()) {
+              found++;
+        }
+        thread->stats.FinishedReadOp();
+
+				rwrandom_read_mu_.Lock();
+				rwrandom_read_completed++;
+				rwrandom_read_mu_.Unlock();
+      }
+      else {
+    	Env::Default()->SleepForMicroseconds(RW_WAIT_MS);
+      }
+      
+      if (FLAGS_countdown > 0 && (i+1) % 100 == 0) {
+	time(&now);
+	if (difftime(now, begin) > FLAGS_countdown)
+		break;
+      }
+    }
+
+    char msg[100];
+    snprintf(msg, sizeof(msg), "(%d of %d found)", found, i);
+    thread->stats.AddMessage(msg);
+
+    fprintf(stderr, "rwrandom completes %d read ops\n", i);
+
+  }
+
+  void RWRandom_Write(ThreadState* thread) {
+    ReadOptions options;
+    std::string value;
+
+    RandomGenerator gen;
+    WriteBatch batch;
+    Status s;
+    int64_t bytes = 0;
+    bool isRead;
+	
+    time_t begin, now;
+
+    int found = 0;
+    int bnum = 0;
+    batch.Clear();
+
+    time(&begin);
+    int i = 0;
+    int wnum = (int)(((double)num_ * (100-FLAGS_read_percent)) / 100);
+		if (rwrandom_wspeed > 0)
+			wnum = num_ * 10;
+    fprintf(stderr, "RWRandom_Write will write %d ops\n", wnum);
+
+    for (i = 0; i < wnum; i++) {
+      char key[100];
+			time(&now);
+      if ( (rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) > (rwrandom_write_completed-RW_RELAX) )|| 
+			(rwrandom_wspeed == 0 &&
+			rwrandom_write_completed < (rwrandom_read_completed + rwrandom_write_completed) * ((double)(100 - FLAGS_read_percent) / 100)  + RW_RELAX) ) {
+        const uint64_t k = FLAGS_write_from + (thread->rand.Next64() % FLAGS_write_span);
+        char key[100];
+        snprintf(key, sizeof(key), "%020ld", k);
+        batch.Put(key, gen.Generate(value_size_));
+        bytes += value_size_ + strlen(key);
+        bnum ++;
+
+        if (bnum == entries_per_batch_) {
+                bnum = 0;
+                s = db_->Write(write_options_, &batch);
+                batch.Clear();
+                if (!s.ok()) {
+                        fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+                        exit(1);
+                }
+                thread->stats.AddBytes(bytes);
+                bytes = 0;
+        }
+    	thread->stats.FinishedWriteOp();
+	rwrandom_write_completed++;
+      } else {
+	Env::Default()->SleepForMicroseconds(RW_WAIT_MS);
+      }
+      
+      if (FLAGS_countdown > 0 && (i+1) % 100 == 0) {
+	time(&now);
+	if (difftime(now, begin) > FLAGS_countdown)
+		break;
+      }
+    }
+
+    fprintf(stderr, "rwrandom completes %d write ops\n", i);
+
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -931,6 +1164,7 @@ int main(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     double d;
     int n;
+    int64_t n64;
     char junk;
     if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -944,6 +1178,14 @@ int main(int argc, char** argv) {
       FLAGS_use_existing_db = n;
     } else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
       FLAGS_num = n;
+      if (FLAGS_read_span == -1) {
+        FLAGS_read_upto = FLAGS_num;
+        FLAGS_read_span = FLAGS_num;
+      }
+      if (FLAGS_write_span == -1) {
+        FLAGS_write_upto = FLAGS_num;
+        FLAGS_write_span = FLAGS_num;
+      }
     } else if (sscanf(argv[i], "--reads=%d%c", &n, &junk) == 1) {
       FLAGS_reads = n;
     } else if (sscanf(argv[i], "--threads=%d%c", &n, &junk) == 1) {
@@ -960,11 +1202,40 @@ int main(int argc, char** argv) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (sscanf(argv[i], "--read_percent=%d%c", &n, &junk) == 1) {
+      FLAGS_read_percent = n;
+    } else if (sscanf(argv[i], "--read_key_from=%ld%c", &n64, &junk) == 1) {
+      FLAGS_read_from = n64;
+    } else if (sscanf(argv[i], "--read_key_upto=%ld%c", &n64, &junk) == 1) {
+      FLAGS_read_upto = n64;
+    } else if (sscanf(argv[i], "--write_key_from=%ld%c", &n64, &junk) == 1) {
+      FLAGS_write_from = n64;
+    } else if (sscanf(argv[i], "--write_key_upto=%ld%c", &n64, &junk) == 1) {
+      FLAGS_write_upto = n64;
+    } else if (sscanf(argv[i], "--mirror=%d%c", &n, &junk) == 1) {
+      hlsm::config::full_mirror = n;
+    } else if (strncmp(argv[i], "--mirror_path=", 14) == 0) {
+      hlsm::config::secondary_storage_path = argv[i] + 14;
+    } else if (sscanf(argv[i], "--file_size=%d%c", &n, &junk) == 1) {
+      leveldb::config::kTargetFileSize = n * 1048576; // in MiB
+    } else if (sscanf(argv[i], "--level0_size=%d%c", &n, &junk) == 1) {
+      leveldb::config::kL0_Size = n;
+    } else if (sscanf(argv[i], "--level_ratio=%d%c", &n, &junk) == 1) {
+      leveldb::config::kLevelRatio = n;
+    } else if (sscanf(argv[i], "--countdown=%lf%c", &d, &junk) == 1) {
+      FLAGS_countdown = d;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
     }
   }
+  FLAGS_read_span = FLAGS_read_upto - FLAGS_read_from;
+  FLAGS_write_span = FLAGS_write_upto - FLAGS_write_from;
+  fprintf(stderr, "Range: %ld(w) %ld(r)\n", FLAGS_write_span, FLAGS_read_span);
+  if (FLAGS_read_percent == -1) {
+	rwrandom_wspeed = FLAGS_num / FLAGS_countdown;
+  }
+
 
   // Choose a location for the test database if none given with --db=<path>
   if (FLAGS_db == NULL) {

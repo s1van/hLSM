@@ -11,7 +11,8 @@ int kLevelRatio = 10;    // enlarge the level size ten times when the db levels 
 namespace hlsm {
 
 namespace config {
-
+int full_mirror = 0;
+const char *secondary_storage_path;
 }
 
 }
