@@ -8,12 +8,13 @@
 #include "table/block.h"
 #include "table/format.h"
 #include "table/iterator_wrapper.h"
+#include "leveldb/hlsm.h"
 
 namespace leveldb {
 
 namespace {
 
-typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&);
+typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&, const bool from_secondary);
 
 class TwoLevelIterator: public Iterator {
  public:
@@ -21,7 +22,8 @@ class TwoLevelIterator: public Iterator {
     Iterator* index_iter,
     BlockFunction block_function,
     void* arg,
-    const ReadOptions& options);
+    const ReadOptions& options,
+    bool from_secondary = false);
 
   virtual ~TwoLevelIterator();
 
@@ -61,6 +63,8 @@ class TwoLevelIterator: public Iterator {
   void SkipEmptyDataBlocksBackward();
   void SetDataIterator(Iterator* data_iter);
   void InitDataBlock();
+  void PrefetchDataBlock();
+  void InitPrefetchedDataBlock();
 
   BlockFunction block_function_;
   void* arg_;
@@ -71,18 +75,21 @@ class TwoLevelIterator: public Iterator {
   // If data_iter_ is non-NULL, then "data_block_handle_" holds the
   // "index_value" passed to block_function_ to create the data_iter_.
   std::string data_block_handle_;
+  bool from_secondary_;
 };
 
 TwoLevelIterator::TwoLevelIterator(
     Iterator* index_iter,
     BlockFunction block_function,
     void* arg,
-    const ReadOptions& options)
+    const ReadOptions& options,
+    bool from_secondary)
     : block_function_(block_function),
       arg_(arg),
       options_(options),
       index_iter_(index_iter),
-      data_iter_(NULL) {
+      data_iter_(NULL),
+      from_secondary_(from_secondary) {
 }
 
 TwoLevelIterator::~TwoLevelIterator() {
@@ -162,7 +169,7 @@ void TwoLevelIterator::InitDataBlock() {
       // data_iter_ is already constructed with this iterator, so
       // no need to change anything
     } else {
-      Iterator* iter = (*block_function_)(arg_, options_, handle);
+      Iterator* iter = (*block_function_)(arg_, options_, handle, from_secondary_);
       data_block_handle_.assign(handle.data(), handle.size());
       SetDataIterator(iter);
     }
@@ -175,8 +182,9 @@ Iterator* NewTwoLevelIterator(
     Iterator* index_iter,
     BlockFunction block_function,
     void* arg,
-    const ReadOptions& options) {
-  return new TwoLevelIterator(index_iter, block_function, arg, options);
+    const ReadOptions& options,
+    const bool from_secondary) {
+  return new TwoLevelIterator(index_iter, block_function, arg, options, from_secondary);
 }
 
 }  // namespace leveldb

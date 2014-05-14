@@ -216,7 +216,7 @@ class Version::LevelFileNumIterator : public Iterator {
 
 static Iterator* GetFileIterator(void* arg,
                                  const ReadOptions& options,
-                                 const Slice& file_value) {
+                                 const Slice& file_value, bool from_secondary = false) {
   TableCache* cache = reinterpret_cast<TableCache*>(arg);
   if (file_value.size() != 16) {
     return NewErrorIterator(
@@ -224,24 +224,24 @@ static Iterator* GetFileIterator(void* arg,
   } else {
     return cache->NewIterator(options,
                               DecodeFixed64(file_value.data()),
-                              DecodeFixed64(file_value.data() + 8));
+                              DecodeFixed64(file_value.data() + 8), NULL, from_secondary);
   }
 }
 
 Iterator* Version::NewConcatenatingIterator(const ReadOptions& options,
-                                            int level) const {
+                                            int level, bool from_secondary) const {
   return NewTwoLevelIterator(
       new LevelFileNumIterator(vset_->icmp_, &files_[level]),
-      &GetFileIterator, vset_->table_cache_, options);
+      &GetFileIterator, vset_->table_cache_, options, from_secondary);
 }
 
 void Version::AddIterators(const ReadOptions& options,
-                           std::vector<Iterator*>* iters) {
+                           std::vector<Iterator*>* iters, bool from_secondary) {
   // Merge all level zero files together since they may overlap
   for (size_t i = 0; i < files_[0].size(); i++) {
     iters->push_back(
         vset_->table_cache_->NewIterator(
-            options, files_[0][i]->number, files_[0][i]->file_size));
+            options, files_[0][i]->number, files_[0][i]->file_size, NULL, from_secondary));
   }
 
   // For levels > 0, we can use a concatenating iterator that sequentially
@@ -249,7 +249,7 @@ void Version::AddIterators(const ReadOptions& options,
   // lazily.
   for (int level = 1; level < config::kNumLevels; level++) {
     if (!files_[level].empty()) {
-      iters->push_back(NewConcatenatingIterator(options, level));
+      iters->push_back(NewConcatenatingIterator(options, level, from_secondary));
     }
   }
 }
@@ -1102,7 +1102,7 @@ int VersionSet::NumLevelFiles(int level) const {
 
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
   // Update code if kNumLevels changes
-  assert(config::kNumLevels == 7);
+  assert(config::kNumLevels == 16);
   snprintf(scratch->buffer, sizeof(scratch->buffer),
            "files[ %d %d %d %d %d %d %d ]",
            int(current_->files_[0].size()),
@@ -1220,7 +1220,7 @@ void VersionSet::GetRange2(const std::vector<FileMetaData*>& inputs1,
   GetRange(all, smallest, largest);
 }
 
-Iterator* VersionSet::MakeInputIterator(Compaction* c) {
+Iterator* VersionSet::MakeInputIterator(Compaction* c, bool from_secondary) {
   ReadOptions options;
   options.verify_checksums = options_->paranoid_checks;
   options.fill_cache = false;
@@ -1237,13 +1237,13 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
         const std::vector<FileMetaData*>& files = c->inputs_[which];
         for (size_t i = 0; i < files.size(); i++) {
           list[num++] = table_cache_->NewIterator(
-              options, files[i]->number, files[i]->file_size);
+              options, files[i]->number, files[i]->file_size, NULL, from_secondary);
         }
       } else {
         // Create concatenating iterator for the files from this level
         list[num++] = NewTwoLevelIterator(
             new Version::LevelFileNumIterator(icmp_, &c->inputs_[which]),
-            &GetFileIterator, table_cache_, options);
+            &GetFileIterator, table_cache_, options, from_secondary);
       }
     }
   }

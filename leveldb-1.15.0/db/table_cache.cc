@@ -7,6 +7,7 @@
 #include "db/filename.h"
 #include "leveldb/env.h"
 #include "leveldb/table.h"
+#include "leveldb/hlsm.h"
 #include "util/coding.h"
 
 namespace leveldb {
@@ -35,22 +36,34 @@ TableCache::TableCache(const std::string& dbname,
     : env_(options->env),
       dbname_(dbname),
       options_(options),
-      cache_(NewLRUCache(entries)) {
+      cache_(NewLRUCache(entries)),
+      mcache_(NewLRUCache(entries)) {
 }
 
 TableCache::~TableCache() {
   delete cache_;
+  delete mcache_;
 }
 
 Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
-                             Cache::Handle** handle) {
+                             Cache::Handle** handle, bool from_secondary) {
   Status s;
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
   Slice key(buf, sizeof(buf));
-  *handle = cache_->Lookup(key);
+
+  if (from_secondary)
+    *handle = mcache_->Lookup(key);
+  else
+    *handle = cache_->Lookup(key);
+
   if (*handle == NULL) {
-    std::string fname = TableFileName(dbname_, file_number);
+    std::string fname;
+    if (from_secondary && hlsm::config::full_mirror && file_size > 65536 && !FileNameHash::inuse(fname)) {
+      fname = TableFileName(hlsm::config::secondary_storage_path, file_number);
+    } else
+      fname = TableFileName(dbname_, file_number);
+
     RandomAccessFile* file = NULL;
     Table* table = NULL;
     s = env_->NewRandomAccessFile(fname, &file);
@@ -73,7 +86,10 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       TableAndFile* tf = new TableAndFile;
       tf->file = file;
       tf->table = table;
-      *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
+      if (from_secondary)
+        *handle = mcache_->Insert(key, tf, 1, &DeleteEntry);
+      else
+        *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   }
   return s;
@@ -82,20 +98,29 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 Iterator* TableCache::NewIterator(const ReadOptions& options,
                                   uint64_t file_number,
                                   uint64_t file_size,
-                                  Table** tableptr) {
+                                  Table** tableptr, bool from_secondary) {
   if (tableptr != NULL) {
     *tableptr = NULL;
   }
 
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s = FindTable(file_number, file_size, &handle, from_secondary);
   if (!s.ok()) {
     return NewErrorIterator(s);
   }
 
-  Table* table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+  Table* table;
+  if (from_secondary)
+    table = reinterpret_cast<TableAndFile*>(mcache_->Value(handle))->table;
+  else
+    table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+
   Iterator* result = table->NewIterator(options);
-  result->RegisterCleanup(&UnrefEntry, cache_, handle);
+  if (from_secondary)
+    result->RegisterCleanup(&UnrefEntry, mcache_, handle);
+  else
+    result->RegisterCleanup(&UnrefEntry, cache_, handle);
+
   if (tableptr != NULL) {
     *tableptr = table;
   }
@@ -122,6 +147,7 @@ void TableCache::Evict(uint64_t file_number) {
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
   cache_->Erase(Slice(buf, sizeof(buf)));
+  mcache_->Erase(Slice(buf, sizeof(buf)));
 }
 
 }  // namespace leveldb

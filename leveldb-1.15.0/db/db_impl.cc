@@ -25,6 +25,7 @@
 #include "leveldb/status.h"
 #include "leveldb/table.h"
 #include "leveldb/table_builder.h"
+#include "leveldb/hlsm.h"
 #include "port/port.h"
 #include "table/block.h"
 #include "table/merger.h"
@@ -156,6 +157,14 @@ DBImpl::~DBImpl() {
 
   if (db_lock_ != NULL) {
     env_->UnlockFile(db_lock_);
+  }
+
+  if (hlsm::config::full_mirror && hlsm::config::use_opq_thread) {
+		uint64_t primary_end_at = Env::Default()->NowMicros();
+		OPQ_ADD_HALT(hlsm::runtime::mio_queue);	
+		if (hlsm::runtime::compaction_helper != NULL) pthread_join(*hlsm::runtime::compaction_helper, NULL);
+		uint64_t secondary_end_at = Env::Default()->NowMicros();
+		Log(options_.info_log, "MJoin takes %lu ms", (secondary_end_at - primary_end_at)/1000);
   }
 
   delete versions_;
@@ -875,6 +884,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   mutex_.Unlock();
 
   Iterator* input = versions_->MakeInputIterator(compact->compaction);
+
   input->SeekToFirst();
   Status status;
   ParsedInternalKey ikey;
@@ -1034,7 +1044,7 @@ static void CleanupIteratorState(void* arg1, void* arg2) {
 
 Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
                                       SequenceNumber* latest_snapshot,
-                                      uint32_t* seed) {
+                                      uint32_t* seed, bool from_secondary) {
   IterState* cleanup = new IterState;
   mutex_.Lock();
   *latest_snapshot = versions_->LastSequence();
@@ -1047,7 +1057,7 @@ Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
     list.push_back(imm_->NewIterator());
     imm_->Ref();
   }
-  versions_->current()->AddIterators(options, &list);
+  versions_->current()->AddIterators(options, &list, from_secondary);
   Iterator* internal_iter =
       NewMergingIterator(&internal_comparator_, &list[0], list.size());
   versions_->current()->Ref();
@@ -1121,10 +1131,10 @@ Status DBImpl::Get(const ReadOptions& options,
   return s;
 }
 
-Iterator* DBImpl::NewIterator(const ReadOptions& options) {
+Iterator* DBImpl::NewIterator(const ReadOptions& options, bool from_secondary) {
   SequenceNumber latest_snapshot;
   uint32_t seed;
-  Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed);
+  Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed, from_secondary);
   return NewDBIterator(
       this, user_comparator(), iter,
       (options.snapshot != NULL
@@ -1440,7 +1450,12 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
   return Write(opt, &batch);
 }
 
-DB::~DB() { }
+DB::~DB() {
+  if (hlsm::config::full_mirror && hlsm::config::use_opq_thread) {
+	OPQ_ADD_HALT(hlsm::runtime::mio_queue);	
+	DEBUG_INFO2("MJoin[~DB]", hlsm::runtime::compaction_helper);
+  }	
+}
 
 Status DB::Open(const Options& options, const std::string& dbname,
                 DB** dbptr) {

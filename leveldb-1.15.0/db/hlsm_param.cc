@@ -1,3 +1,6 @@
+#include "leveldb/hlsm_types.h"
+#include <pthread.h>
+
 namespace leveldb {
 
 namespace config {
@@ -6,13 +9,21 @@ int kL0_Size = 10;       // in MB
 int kLevelRatio = 10;    // enlarge the level size ten times when the db levels up
 }
 
+uint32_t FileNameHash::hash[] = {0};
 }
 
 namespace hlsm {
 
 namespace config {
 int full_mirror = 0;
-const char *secondary_storage_path;
+int use_opq_thread = 1;
+char *secondary_storage_path = NULL;
+int compact_read_from_secondary = 1;
+}
+
+namespace runtime {
+pthread_t *compaction_helper = NULL;
+opq mio_queue = NULL;
 }
 
 }

@@ -61,7 +61,7 @@ class Version {
   // Append to *iters a sequence of iterators that will
   // yield the contents of this Version when merged together.
   // REQUIRES: This version has been saved (see VersionSet::SaveTo)
-  void AddIterators(const ReadOptions&, std::vector<Iterator*>* iters);
+  void AddIterators(const ReadOptions&, std::vector<Iterator*>* iters, bool from_secondary=false);
 
   // Lookup the value for key.  If found, store it in *val and
   // return OK.  Else return a non-OK status.  Fills *stats.
@@ -118,7 +118,7 @@ class Version {
   friend class VersionSet;
 
   class LevelFileNumIterator;
-  Iterator* NewConcatenatingIterator(const ReadOptions&, int level) const;
+  Iterator* NewConcatenatingIterator(const ReadOptions&, int level, bool from_secondary=false) const;
 
   // Call func(arg, level, f) for every file that overlaps user_key in
   // order from newest to oldest.  If an invocation of func returns
@@ -245,7 +245,7 @@ class VersionSet {
 
   // Create an iterator that reads over the compaction inputs for "*c".
   // The caller should delete the iterator when no longer needed.
-  Iterator* MakeInputIterator(Compaction* c);
+  Iterator* MakeInputIterator(Compaction* c, bool from_secondary = false);
 
   // Returns true iff some level needs a compaction.
   bool NeedsCompaction() const {
