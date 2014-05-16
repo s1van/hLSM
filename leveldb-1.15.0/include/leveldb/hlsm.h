@@ -47,11 +47,16 @@ extern int full_mirror;
 extern int use_opq_thread;
 extern const char *secondary_storage_path;
 extern int compact_read_from_secondary;
+
+extern int debug_level; // default value 0 is; info whose level is smaller or equal to debug_level will be displayed
+extern char* debug_file; // where to dump the debug info
 }
 
 namespace runtime {
 extern pthread_t *compaction_helper;
 extern opq mio_queue;
+
+extern FILE *debug_fd; // initialized using hlsm::config::debug_file (default: stderr)
 }
 
 }

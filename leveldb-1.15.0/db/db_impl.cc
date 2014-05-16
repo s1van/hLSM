@@ -1453,8 +1453,8 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 DB::~DB() {
   if (hlsm::config::full_mirror && hlsm::config::use_opq_thread) {
 	OPQ_ADD_HALT(hlsm::runtime::mio_queue);	
-	DEBUG_INFO2("MJoin[~DB]", hlsm::runtime::compaction_helper);
-  }	
+	DEBUG_INFO(0, "DB Released\n");
+  }
 }
 
 Status DB::Open(const Options& options, const std::string& dbname,
