@@ -128,8 +128,9 @@ static int rwrandom_read_completed = 0;
 static int rwrandom_write_completed = 0;
 static const int RW_RELAX=1024;
 static const int RW_WAIT_MS=8192;
+static int monitor_interval = -1; //microseconds
+static bool first_monitor_interval = true;
 
-static int MONITOR_INTERVAL = -1; //microseconds
 static leveldb::Histogram intv_read_hist_;
 static leveldb::Histogram intv_write_hist_;
 static double intv_start_;
@@ -257,7 +258,7 @@ class Stats {
   }
 
   void FinishedReadOp() {
-    if (FLAGS_histogram) {
+    if (monitor_interval != -1) {
       double now = Env::Default()->NowMicros();
       double micros = now - last_op_finish_;
       read_hist_.Add(micros);
@@ -269,7 +270,7 @@ class Stats {
   }
 
   void FinishedWriteOp() {
-    if (FLAGS_histogram) {
+    if (monitor_interval != -1) {
       double now = Env::Default()->NowMicros();
       double micros = now - last_op_finish_;
       write_hist_.Add(micros);
@@ -305,23 +306,27 @@ class Stats {
       fflush(stderr);
     }
 
-		intv_end_ = Env::Default()->NowMicros();
-		if (MONITOR_INTERVAL != -1 && intv_end_ - intv_start_ > MONITOR_INTERVAL) {
-			intv_mu_.Lock();
-			if (intv_end_ - intv_start_ > MONITOR_INTERVAL) {
-    	  		fprintf(stdout, "PID_TID_RL_WL_RD_WD_RT_WT\t%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", 
-					pid_, tid_,
+    intv_end_ = Env::Default()->NowMicros();
+    if (monitor_interval != -1 && intv_end_ - intv_start_ > monitor_interval) {
+    	intv_mu_.Lock();
+    	if (intv_end_ - intv_start_ > monitor_interval) {
+    		if (first_monitor_interval) {
+    			fprintf(stdout, "\nPID\tTID\tRL\tWL\tRD\tWD\tRT\tWT\n");
+    			first_monitor_interval = false;
+    		}
+    		fprintf(stdout, "%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+    				pid_, tid_,
 					intv_read_hist_.Average(), intv_write_hist_.Average(), 
 					intv_read_hist_.StandardDeviation(), intv_write_hist_.StandardDeviation(), 
 					intv_read_hist_.Num() * 1000000 /(intv_end_ - intv_start_),
 					intv_write_hist_.Num() * 1000000 /(intv_end_ - intv_start_));
 
-				intv_start_ = intv_end_;
-				intv_read_hist_.Clear();
-				intv_write_hist_.Clear();
-			}
-			intv_mu_.Unlock();
-		}
+    		intv_start_ = intv_end_;
+    		intv_read_hist_.Clear();
+    		intv_write_hist_.Clear();
+    	}
+    	intv_mu_.Unlock();
+    }
   }
 
   void AddBytes(int64_t n) {
@@ -604,7 +609,7 @@ class Benchmark {
         PrintStats("leveldb.sstables");
       } else if (name == Slice("rwrandom")) {
         method = &Benchmark::RWRandom_Write;
-        MONITOR_INTERVAL = 2000000;
+        monitor_interval = 2000000;
       } else {
         if (name != Slice()) {  // No error message for empty name
           fprintf(stderr, "unknown benchmark '%s'\n", name.ToString().c_str());
@@ -1224,6 +1229,8 @@ int main(int argc, char** argv) {
       leveldb::config::kLevelRatio = n;
     } else if (sscanf(argv[i], "--countdown=%lf%c", &d, &junk) == 1) {
       FLAGS_countdown = d;
+    } else if (sscanf(argv[i], "--debug_level=%d%c", &n, &junk) == 1) {
+      hlsm::config::debug_level = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
