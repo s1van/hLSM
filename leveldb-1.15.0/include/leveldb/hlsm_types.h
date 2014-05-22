@@ -7,6 +7,35 @@
 #include <string>
 
 #include "util/hash.h"
+#include "leveldb/env.h"
+#include "leveldb/slice.h"
+#include "leveldb/status.h"
+
+namespace hlsm {
+
+class FullMirror_PosixWritableFile : public leveldb::WritableFile {
+private:
+ std::string filename_;
+ std::string sfilename_; // on secondary storage (HDD)
+
+ FILE* file_;
+ FILE* sfile_;
+ int sfd_;
+
+ leveldb::WritableFile *fp_;
+ leveldb::WritableFile *sfp_;
+
+public:
+	FullMirror_PosixWritableFile(const std::string&, FILE*);
+	~FullMirror_PosixWritableFile();
+	virtual leveldb::Status Append(const leveldb::Slice&);
+	virtual leveldb::Status Close();
+	virtual leveldb::Status Flush();
+	virtual leveldb::Status Sync();
+};
+
+
+}
 
 /************************** For Mirror Write Status ****************************/
 
@@ -137,10 +166,10 @@ typedef struct {
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
-#define OPQ_ADD_BUF_CLOSE(q_, fd_)	do{	\
+#define OPQ_ADD_BUF_CLOSE(q_, fp_)	do{	\
 		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
 		op_->type = MBufClose;\
-		op_->fd = fd_;	\
+		op_->ptr1 = fp_;	\
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
@@ -176,14 +205,14 @@ typedef struct {
 	} while(0)
 
 #define INIT_HELPER_AND_QUEUE(helper_, queue_)	\
-	do {										\
-		if (helper_ == NULL) {\
-			helper_ = (pthread_t *) malloc(sizeof(pthread_t));	\
+	do { \
+		if (helper_ == NULL) {  \
+			helper_ = (pthread_t *) malloc(sizeof(pthread_t));   \
 			queue_ = OPQ_MALLOC;\
-			OPQ_INIT(queue_);		\
-			pthread_create(helper_, NULL,  &mirrorCompactionHelper, queue_);	\
-			DEBUG_INFO2("INIT_HELPER", queue_);	\
-		}											\
+			OPQ_INIT(queue_);   \
+			pthread_create(helper_, NULL,  &hlsm::opq_helper, queue_);	\
+			DEBUG_INFO(1, "Init OPQ Helper\tQueue: %p\n", queue_);\
+		}\
 	} while (0)
 
 

@@ -1231,6 +1231,11 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c, bool from_secondary) {
   const int space = (c->level() == 0 ? c->inputs_[0].size() + 1 : 2);
   Iterator** list = new Iterator*[space];
   int num = 0;
+
+  DEBUG_INFO(2, "from_secondary: %d\n", from_secondary);
+  DEBUG_META_ITER(2, "inputs_[0]", c->inputs_[0]);
+  DEBUG_META_ITER(2, "inputs_[1]", c->inputs_[1]);
+
   for (int which = 0; which < 2; which++) {
     if (!c->inputs_[which].empty()) {
       if (c->level() + which == 0) {

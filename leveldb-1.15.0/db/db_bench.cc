@@ -1219,8 +1219,8 @@ int main(int argc, char** argv) {
       FLAGS_write_upto = n64;
     } else if (sscanf(argv[i], "--hlsm_full_mirror=%d%c", &n, &junk) == 1) {
       hlsm::config::full_mirror = n;
-    } else if (strncmp(argv[i], "--hlsm_second_storage_path=", 14) == 0) {
-      hlsm::config::secondary_storage_path = argv[i] + 14;
+    } else if (strncmp(argv[i], "--hlsm_second_storage_path=", 27) == 0) {
+      hlsm::config::secondary_storage_path = argv[i] + 27;
     } else if (sscanf(argv[i], "--file_size=%d%c", &n, &junk) == 1) {
       leveldb::config::kTargetFileSize = n * 1048576; // in MiB
     } else if (sscanf(argv[i], "--level0_size=%d%c", &n, &junk) == 1) {
@@ -1231,6 +1231,8 @@ int main(int argc, char** argv) {
       FLAGS_countdown = d;
     } else if (sscanf(argv[i], "--debug_level=%d%c", &n, &junk) == 1) {
       hlsm::config::debug_level = n;
+    } else if (strncmp(argv[i], "--debug_file=", 13) == 0) {
+      hlsm::config::debug_file = argv[i] + 13;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);

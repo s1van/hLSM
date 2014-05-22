@@ -161,8 +161,8 @@ DBImpl::~DBImpl() {
 
   if (hlsm::config::full_mirror && hlsm::config::use_opq_thread) {
 		uint64_t primary_end_at = Env::Default()->NowMicros();
-		OPQ_ADD_HALT(hlsm::runtime::mio_queue);	
-		if (hlsm::runtime::compaction_helper != NULL) pthread_join(*hlsm::runtime::compaction_helper, NULL);
+		OPQ_ADD_HALT(hlsm::runtime::op_queue);
+		if (hlsm::runtime::opq_helper != NULL) pthread_join(*hlsm::runtime::opq_helper, NULL);
 		uint64_t secondary_end_at = Env::Default()->NowMicros();
 		Log(options_.info_log, "MJoin takes %lu ms", (secondary_end_at - primary_end_at)/1000);
   }
@@ -865,6 +865,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
+  DEBUG_INFO(2, "Compact Start\n");
   Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
       compact->compaction->num_input_files(0),
       compact->compaction->level(),
@@ -883,7 +884,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   // Release mutex while we're actually doing the compaction work
   mutex_.Unlock();
 
-  Iterator* input = versions_->MakeInputIterator(compact->compaction);
+  Iterator* input = versions_->MakeInputIterator(compact->compaction, true);
 
   input->SeekToFirst();
   Status status;
@@ -1452,7 +1453,7 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 
 DB::~DB() {
   if (hlsm::config::full_mirror && hlsm::config::use_opq_thread) {
-	OPQ_ADD_HALT(hlsm::runtime::mio_queue);	
+	OPQ_ADD_HALT(hlsm::runtime::op_queue);
 	DEBUG_INFO(1, "DB Released\n");
   }
 }
@@ -1460,6 +1461,7 @@ DB::~DB() {
 Status DB::Open(const Options& options, const std::string& dbname,
                 DB** dbptr) {
   *dbptr = NULL;
+  hlsm::runtime::init();
 
   DBImpl* impl = new DBImpl(options, dbname);
   impl->mutex_.Lock();

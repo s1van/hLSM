@@ -4,6 +4,10 @@
 
 #include <deque>
 #include <set>
+#include <string>
+#include <iostream>
+#include <cstring>
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -26,6 +30,7 @@
 #include "util/logging.h"
 #include "util/mutexlock.h"
 #include "util/posix_logger.h"
+#include "leveldb/hlsm.h"
 
 namespace leveldb {
 
@@ -42,7 +47,9 @@ class PosixSequentialFile: public SequentialFile {
 
  public:
   PosixSequentialFile(const std::string& fname, FILE* f)
-      : filename_(fname), file_(f) { }
+      : filename_(fname), file_(f) {
+    DEBUG_INFO(2, "%s\n", fname.c_str());
+  }
   virtual ~PosixSequentialFile() { fclose(file_); }
 
   virtual Status Read(size_t n, Slice* result, char* scratch) {
@@ -76,7 +83,9 @@ class PosixRandomAccessFile: public RandomAccessFile {
 
  public:
   PosixRandomAccessFile(const std::string& fname, int fd)
-      : filename_(fname), fd_(fd) { }
+      : filename_(fname), fd_(fd) {
+    DEBUG_INFO(2, "%s\n", fname.c_str());
+  }
   virtual ~PosixRandomAccessFile() { close(fd_); }
 
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
@@ -164,6 +173,7 @@ class PosixMmapReadableFile: public RandomAccessFile {
 
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const {
+	DEBUG_INFO(2, "BGN\t%s\t%lu\t%lu\n", filename_.c_str(), offset, n);
     Status s;
     if (offset + n > length_) {
       *result = Slice();
@@ -171,6 +181,7 @@ class PosixMmapReadableFile: public RandomAccessFile {
     } else {
       *result = Slice(reinterpret_cast<char*>(mmapped_region_) + offset, n);
     }
+	DEBUG_INFO(2, "END\t%s\t%lu\t%lu\n", filename_.c_str(), offset, n);
     return s;
   }
 };
@@ -347,7 +358,10 @@ class PosixEnv : public Env {
       *result = NULL;
       s = IOError(fname, errno);
     } else {
-      *result = new PosixWritableFile(fname, f);
+      if (hlsm::config::full_mirror && FILE_HAS_PREFIX(fname, "ldb"))
+    	  *result = new hlsm::FullMirror_PosixWritableFile(fname, f);
+      else
+    	  *result = new PosixWritableFile(fname, f);
     }
     return s;
   }

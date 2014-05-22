@@ -44,6 +44,19 @@
 		_FLUSH; \
 	} while(0)
 
+
+#define _DEBUG_META_ITER(_tag, _vec) do{	\
+		_PRINT_CURRENT_TIME;		\
+		fprintf(_DEBUG_FD, "\t");   \
+		_PRINT_LOC_INFO;			\
+		fprintf(_DEBUG_FD, "\t%s", _tag);   \
+		for(int _i = 0;_i<_vec.size(); _i++){   \
+			fprintf(_DEBUG_FD, "\t%lu", _vec[_i]->number);   \
+		}       \
+		fprintf(_DEBUG_FD, "\n");   \
+		_FLUSH; \
+	} while(0)
+
 #define _DEBUG_LEVEL_CHEKC(_level, _do) do {        \
 		if (_level <= hlsm::config::debug_level) {  \
 			_do;\
@@ -53,5 +66,6 @@
 /**************** public ****************/
 #define DEBUG_MEASURE(_level, ...) _DEBUG_LEVEL_CHEKC(_level, _DEBUG_MEASURE(__VA_ARGS__))
 #define DEBUG_INFO(_level, ...) _DEBUG_LEVEL_CHEKC(_level, _DEBUG_INFO(__VA_ARGS__))
+#define DEBUG_META_ITER(_level, ...) _DEBUG_LEVEL_CHEKC(_level, _DEBUG_META_ITER(__VA_ARGS__))
 
 #endif  //HLSM_DEBUG_H
