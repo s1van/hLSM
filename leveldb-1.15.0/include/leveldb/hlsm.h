@@ -11,7 +11,7 @@
 #include "leveldb/hlsm_types.h"
 
 #define BLKSIZE 4096
-#define FILE_HAS_PREFIX(fname_, str_) ((fname_.find(str_) != std::string::npos))
+#define FILE_HAS_SUFFIX(fname_, str_) ((fname_.find(str_) != std::string::npos))
 
 
 /************************** Configuration *****************************/

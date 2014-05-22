@@ -358,7 +358,7 @@ class PosixEnv : public Env {
       *result = NULL;
       s = IOError(fname, errno);
     } else {
-      if (hlsm::config::full_mirror && FILE_HAS_PREFIX(fname, "ldb"))
+      if (hlsm::config::full_mirror && FILE_HAS_SUFFIX(fname, "ldb"))
     	  *result = new hlsm::FullMirror_PosixWritableFile(fname, f);
       else
     	  *result = new PosixWritableFile(fname, f);
