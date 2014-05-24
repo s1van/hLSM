@@ -47,6 +47,7 @@ class TableCache {
 
   // Evict any entry for the specified file number
   void Evict(uint64_t file_number);
+  Status PreLoadTable(uint64_t file_number, uint64_t file_size);
 
  private:
   Env* const env_;

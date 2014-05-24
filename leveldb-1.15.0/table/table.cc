@@ -9,6 +9,7 @@
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/options.h"
+#include "leveldb/hlsm.h"
 #include "table/block.h"
 #include "table/filter_block.h"
 #include "table/format.h"
@@ -61,6 +62,7 @@ Status Table::Open(const Options& options,
     s = ReadBlock(file, ReadOptions(), footer.index_handle(), &contents);
     if (s.ok()) {
       index_block = new Block(contents);
+      DEBUG_INFO(2, "table size: %lu\tindex size: %lu\n", size, contents.data.size());
     }
   }
 
@@ -98,6 +100,7 @@ void Table::ReadMeta(const Footer& footer) {
     return;
   }
   Block* meta = new Block(contents);
+  DEBUG_INFO(2, "metaindex size: %lu\n", contents.data.size());
 
   Iterator* iter = meta->NewIterator(BytewiseComparator());
   std::string key = "filter.";
@@ -124,6 +127,7 @@ void Table::ReadFilter(const Slice& filter_handle_value) {
   if (!ReadBlock(rep_->file, opt, filter_handle, &block).ok()) {
     return;
   }
+  DEBUG_INFO(2, "filter size: %lu\n", block.data.size());
   if (block.heap_allocated) {
     rep_->filter_data = block.data.data();     // Will need to delete later
   }

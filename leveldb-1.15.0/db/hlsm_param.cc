@@ -18,6 +18,7 @@ namespace hlsm {
 namespace config {
 int full_mirror = 0;
 bool use_opq_thread = true;
+int preload_metadata_max_level = 4;
 
 char *secondary_storage_path = NULL;
 bool compact_read_from_secondary = true;

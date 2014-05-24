@@ -216,5 +216,10 @@ typedef struct {
 	} while (0)
 
 
+/************************** Configuration Related *****************************/
+namespace hlsm {
+typedef enum { Default =1, FullMirror, bLSM, hLSM } mode_t;
+
+}
 
 #endif  //HLSM_TYPES_H

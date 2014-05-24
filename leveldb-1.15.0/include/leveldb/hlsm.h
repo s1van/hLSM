@@ -7,6 +7,8 @@
 #include <malloc.h>
 #include <stdio.h>
 
+#include "db/version_set.h"
+
 #include "leveldb/hlsm_debug.h"
 #include "leveldb/hlsm_types.h"
 
@@ -30,6 +32,7 @@ namespace hlsm {
 namespace config {
 extern int full_mirror;
 extern bool  use_opq_thread;
+extern int preload_metadata_max_level;
 
 extern const char *secondary_storage_path;
 extern bool compact_read_from_secondary;
@@ -46,11 +49,17 @@ extern pthread_t *opq_helper;
 extern opq op_queue;
 
 extern FILE *debug_fd; // initialized using hlsm::config::debug_file (default: stderr)
+
 int init();
+int preload_metadata(leveldb::VersionSet*);
 } // runtime
 
 } // hlsm
 
-/*********************** Configuration (END) **************************/
+/*********************** Functions **************************/
+namespace hlsm {
+
+
+}
 
 #endif  //HLSM_H

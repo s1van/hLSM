@@ -409,8 +409,11 @@ Status Version::Get(const ReadOptions& options,
       saver.ucmp = ucmp;
       saver.user_key = user_key;
       saver.value = value;
+      DEBUG_INFO(3, "before table_cache_->Get()\n");
       s = vset_->table_cache_->Get(options, f->number, f->file_size,
                                    ikey, &saver, SaveValue);
+      DEBUG_INFO(3, "after table_cache_->Get()\n");
+
       if (!s.ok()) {
         return s;
       }

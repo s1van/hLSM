@@ -113,6 +113,9 @@ class Version {
   // Return a human readable string that describes this version's contents.
   std::string DebugString() const;
 
+  // Preload index and filter of tables from certain levels
+  int preload_metadata(int max_level);
+
  private:
   friend class Compaction;
   friend class VersionSet;

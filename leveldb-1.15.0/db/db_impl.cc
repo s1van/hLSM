@@ -1487,6 +1487,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
   impl->mutex_.Unlock();
   if (s.ok()) {
     *dbptr = impl;
+    hlsm::runtime::preload_metadata(impl->versions_);
   } else {
     delete impl;
   }
