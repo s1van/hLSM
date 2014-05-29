@@ -25,6 +25,7 @@ bool compact_read_from_secondary = true;
 bool direct_write_on_secondary = true;
 bool secondary_use_buffer_file = true;
 bool lazy_sync_on_secondary = true;
+bool use_cursor_compaction = false;
 
 int debug_level = 0;
 char* debug_file = NULL;
@@ -34,13 +35,6 @@ namespace runtime {
 pthread_t *opq_helper = NULL;
 opq op_queue = NULL;
 FILE *debug_fd = stderr;
-
-int init() {
-	if (hlsm::config::debug_file != NULL)
-		debug_fd = fopen(hlsm::config::debug_file, "w");
-	return 0;
-}
-
 } // runtime
 
 } // hlsm

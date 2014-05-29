@@ -11,6 +11,7 @@
 
 #include "leveldb/hlsm_debug.h"
 #include "leveldb/hlsm_types.h"
+#include "db/hlsm_impl.h"
 
 #define BLKSIZE 4096
 #define FILE_HAS_SUFFIX(fname_, str_) ((fname_.find(str_) != std::string::npos))
@@ -39,6 +40,7 @@ extern bool compact_read_from_secondary;
 extern bool direct_write_on_secondary;
 extern bool secondary_use_buffer_file;
 extern bool lazy_sync_on_secondary;
+extern bool use_cursor_compaction;
 
 extern int debug_level; // default value 0 is; info whose level is smaller or equal to debug_level will be displayed
 extern char* debug_file; // where to dump the debug info
@@ -49,17 +51,8 @@ extern pthread_t *opq_helper;
 extern opq op_queue;
 
 extern FILE *debug_fd; // initialized using hlsm::config::debug_file (default: stderr)
-
-int init();
-int preload_metadata(leveldb::VersionSet*);
 } // runtime
 
 } // hlsm
-
-/*********************** Functions **************************/
-namespace hlsm {
-
-
-}
 
 #endif  //HLSM_H

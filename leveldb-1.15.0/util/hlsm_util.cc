@@ -95,6 +95,7 @@ static void *opq_helper(void * arg) {
 		DEBUG_INFO(3, "Helper Count: %d\n", c++);
 	}
 
+	DEBUG_INFO(1, "Stop OPQ Helper\tQueue: %p\n", op_queue);
   return NULL;
 }
 

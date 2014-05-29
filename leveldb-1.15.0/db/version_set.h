@@ -114,7 +114,7 @@ class Version {
   std::string DebugString() const;
 
   // Preload index and filter of tables from certain levels
-  int preload_metadata(int max_level);
+  int PreloadMetadata(int max_level);
 
  private:
   friend class Compaction;
@@ -270,6 +270,8 @@ class VersionSet {
     char buffer[100];
   };
   const char* LevelSummary(LevelSummaryStorage* scratch) const;
+
+  Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
  private:
   class Builder;

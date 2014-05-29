@@ -20,6 +20,7 @@
 #include "db/table_cache.h"
 #include "db/version_set.h"
 #include "db/write_batch_internal.h"
+#include "db/hlsm_impl.h"
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/status.h"
@@ -692,7 +693,8 @@ void DBImpl::BackgroundCompaction() {
   Status status;
   if (c == NULL) {
     // Nothing to do
-  } else if (!is_manual && c->IsTrivialMove()) {
+  } else if (!is_manual && c->IsTrivialMove() && ( !hlsm::config::use_cursor_compaction || c->level() % 2 == 0)) {
+	DEBUG_INFO(1, "Trivial move level %d\n", c->level());
     // Move file to next level
     assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
@@ -710,7 +712,21 @@ void DBImpl::BackgroundCompaction() {
         static_cast<unsigned long long>(f->file_size),
         status.ToString().c_str(),
         versions_->LevelSummary(&tmp));
+  } else if (!is_manual && hlsm::config::use_cursor_compaction && c->level() % 2 == 1) {
+	DEBUG_INFO(1, "Move the entire level %d\n", c->level());
+	// Move entire level to next level
+	status = versions_->MoveLevelDown(c, &mutex_);
+	if (!status.ok()) {
+		RecordBackgroundError(status);
+	}
+	VersionSet::LevelSummaryStorage tmp;
+	Log(options_.info_log, "Moved level-%d to level-%d %s: %s\n",
+		c->level(),	c->level() + 1,
+		status.ToString().c_str(),
+		versions_->LevelSummary(&tmp));
+
   } else {
+	DEBUG_INFO(1, "DoCompactionWork\n");
     CompactionState* compact = new CompactionState(c);
     status = DoCompactionWork(compact);
     if (!status.ok()) {
@@ -1456,6 +1472,7 @@ DB::~DB() {
 	OPQ_ADD_HALT(hlsm::runtime::op_queue);
 	DEBUG_INFO(1, "DB Released\n");
   }
+  hlsm::runtime::cleanup();
 }
 
 Status DB::Open(const Options& options, const std::string& dbname,
