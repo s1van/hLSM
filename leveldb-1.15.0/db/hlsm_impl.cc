@@ -76,14 +76,18 @@ int init() {
 
 	} else if (hlsm::config::mode.isFullMirror()) {
 		full_mirror = true;
-		full_mirror_start_level = 0;
+		mirror_start_level = 0;
+		seqential_read_from_primary = false; // primary is SSD, secondary is HDD
+		random_read_from_primary = true;
 	} else if (hlsm::config::mode.isbLSM()) {
 		full_mirror = false;
 		use_cursor_compaction = true;
 	} else if (hlsm::config::mode.ishLSM()) {
-		full_mirror = true;
-		full_mirror_start_level = 6; // logically the last level
+		full_mirror = false;
+		mirror_start_level = 6; // logical level
 		use_cursor_compaction = true;
+		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
+		random_read_from_primary = false;
 	}
 
 	return 0;

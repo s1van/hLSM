@@ -36,7 +36,7 @@ opq op_queue = NULL;
 FILE *debug_fd = stderr;
 
 bool full_mirror = false;
-int full_mirror_start_level = 0;
+int mirror_start_level = 0;
 
 bool use_cursor_compaction = false;
 

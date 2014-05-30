@@ -51,7 +51,7 @@ extern opq op_queue;
 extern FILE *debug_fd; // initialized using hlsm::config::debug_file (default: stderr)
 
 extern bool full_mirror;
-extern int full_mirror_start_level;
+extern int mirror_start_level;
 
 extern bool use_cursor_compaction;
 
