@@ -160,7 +160,7 @@ DBImpl::~DBImpl() {
     env_->UnlockFile(db_lock_);
   }
 
-  if (hlsm::config::full_mirror && hlsm::config::use_opq_thread) {
+  if (hlsm::runtime::full_mirror && hlsm::config::use_opq_thread) {
 		uint64_t primary_end_at = Env::Default()->NowMicros();
 		OPQ_ADD_HALT(hlsm::runtime::op_queue);
 		if (hlsm::runtime::opq_helper != NULL) pthread_join(*hlsm::runtime::opq_helper, NULL);
@@ -693,7 +693,7 @@ void DBImpl::BackgroundCompaction() {
   Status status;
   if (c == NULL) {
     // Nothing to do
-  } else if (!is_manual && c->IsTrivialMove() && ( !hlsm::config::use_cursor_compaction || c->level() % 2 == 0)) {
+  } else if (!is_manual && c->IsTrivialMove() && ( !hlsm::runtime::use_cursor_compaction || c->level() % 2 == 0)) {
 	DEBUG_INFO(1, "Trivial move level %d\n", c->level());
     // Move file to next level
     assert(c->num_input_files(0) == 1);
@@ -712,7 +712,7 @@ void DBImpl::BackgroundCompaction() {
         static_cast<unsigned long long>(f->file_size),
         status.ToString().c_str(),
         versions_->LevelSummary(&tmp));
-  } else if (!is_manual && hlsm::config::use_cursor_compaction && c->level() % 2 == 1) {
+  } else if (!is_manual && hlsm::runtime::use_cursor_compaction && c->level() % 2 == 1) {
 	DEBUG_INFO(1, "Move the entire level %d\n", c->level());
 	// Move entire level to next level
 	status = versions_->MoveLevelDown(c, &mutex_);
@@ -1468,7 +1468,7 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 }
 
 DB::~DB() {
-  if (hlsm::config::full_mirror && hlsm::config::use_opq_thread) {
+  if (hlsm::runtime::full_mirror && hlsm::config::use_opq_thread) {
 	OPQ_ADD_HALT(hlsm::runtime::op_queue);
 	DEBUG_INFO(1, "DB Released\n");
   }

@@ -71,6 +71,21 @@ int init() {
 	if (hlsm::config::debug_file != NULL)
 		debug_fd = fopen(hlsm::config::debug_file, "w");
 	DEBUG_INFO(1, "debug_fd = %p\tstderr = %p\n", debug_fd, stderr);
+
+	if (hlsm::config::mode.isDefault()) {
+
+	} else if (hlsm::config::mode.isFullMirror()) {
+		full_mirror = true;
+		full_mirror_start_level = 0;
+	} else if (hlsm::config::mode.isbLSM()) {
+		full_mirror = false;
+		use_cursor_compaction = true;
+	} else if (hlsm::config::mode.ishLSM()) {
+		full_mirror = true;
+		full_mirror_start_level = 6; // logically the last level
+		use_cursor_compaction = true;
+	}
+
 	return 0;
 }
 

@@ -31,7 +31,7 @@ extern int kLevelRatio;  // enlarge the level size by ten when the db levels up
 namespace hlsm {
 
 namespace config {
-extern int full_mirror;
+extern DBMode mode;
 extern bool  use_opq_thread;
 extern int preload_metadata_max_level;
 
@@ -40,7 +40,6 @@ extern bool compact_read_from_secondary;
 extern bool direct_write_on_secondary;
 extern bool secondary_use_buffer_file;
 extern bool lazy_sync_on_secondary;
-extern bool use_cursor_compaction;
 
 extern int debug_level; // default value 0 is; info whose level is smaller or equal to debug_level will be displayed
 extern char* debug_file; // where to dump the debug info
@@ -49,8 +48,15 @@ extern char* debug_file; // where to dump the debug info
 namespace runtime {
 extern pthread_t *opq_helper;
 extern opq op_queue;
-
 extern FILE *debug_fd; // initialized using hlsm::config::debug_file (default: stderr)
+
+extern bool full_mirror;
+extern int full_mirror_start_level;
+
+extern bool use_cursor_compaction;
+
+extern bool seqential_read_from_primary;
+extern bool random_read_from_primary;
 } // runtime
 
 } // hlsm

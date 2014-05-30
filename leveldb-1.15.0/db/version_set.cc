@@ -1053,7 +1053,7 @@ void VersionSet::Finalize(Version* v) {
           static_cast<double>(config::kL0_CompactionTrigger);
     } else {
       // Compute the ratio of current size to size limit.
-      if (hlsm::config::use_cursor_compaction) {
+      if (hlsm::runtime::use_cursor_compaction) {
     	  score = hlsm::cursor::calculate_compaction_score(level, v->files_);
       } else {
     	  const uint64_t level_bytes = TotalFileSize(v->files_[level]);

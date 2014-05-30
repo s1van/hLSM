@@ -10,6 +10,7 @@
 #include "leveldb/env.h"
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
+#include "leveldb/hlsm_debug.h"
 
 namespace hlsm {
 
@@ -218,8 +219,57 @@ typedef struct {
 
 /************************** Configuration Related *****************************/
 namespace hlsm {
-typedef enum { Default =1, FullMirror, bLSM, hLSM } mode_t;
+typedef enum { Default =1, FullMirror, bLSM, hLSM, Unknown} mode_t;
+class DBMode {
+public:
+	DBMode(mode_t m) {
+		mode = m;
+	}
 
-}
+	DBMode(std::string m) {
+		set(m);
+	}
+
+	DBMode(const char * m) {
+		set(std::string(m));
+	}
+
+	bool isDefault() {
+		return (mode == Default);
+	}
+
+	bool isFullMirror() {
+		return (mode == FullMirror);
+	}
+
+	bool isbLSM() {
+		return (mode == bLSM);
+	}
+
+	bool ishLSM() {
+		return (mode == hLSM);
+	}
+
+	void set(std::string mstr) {
+		if (mstr.find("Default") != std::string::npos)
+			mode = Default;
+		else if (mstr.find("FullMirror") != std::string::npos)
+			mode = FullMirror;
+		else if (mstr.find("bLSM") != std::string::npos)
+			mode = bLSM;
+		else if (mstr.find("hLSM") != std::string::npos)
+			mode = hLSM;
+		else
+			mode = Unknown;
+	}
+
+	int get() {
+		return (int) mode;
+	}
+
+private:
+	mode_t mode;
+};
+} // hlsm
 
 #endif  //HLSM_TYPES_H

@@ -16,7 +16,7 @@ uint32_t FileNameHash::hash[] = {0};
 namespace hlsm {
 
 namespace config {
-int full_mirror = 0;
+DBMode mode("Default");
 bool use_opq_thread = true;
 int preload_metadata_max_level = 4;
 
@@ -25,7 +25,6 @@ bool compact_read_from_secondary = true;
 bool direct_write_on_secondary = true;
 bool secondary_use_buffer_file = true;
 bool lazy_sync_on_secondary = true;
-bool use_cursor_compaction = false;
 
 int debug_level = 0;
 char* debug_file = NULL;
@@ -35,6 +34,14 @@ namespace runtime {
 pthread_t *opq_helper = NULL;
 opq op_queue = NULL;
 FILE *debug_fd = stderr;
+
+bool full_mirror = false;
+int full_mirror_start_level = 0;
+
+bool use_cursor_compaction = false;
+
+bool seqential_read_from_primary = true;
+bool random_read_from_primary = true;
 } // runtime
 
 } // hlsm

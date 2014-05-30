@@ -59,7 +59,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 
   if (*handle == NULL) {
     std::string fname;
-    if (from_secondary && hlsm::config::full_mirror && file_size > 65536 && !FileNameHash::inuse(fname)) {
+    if (from_secondary && hlsm::runtime::full_mirror && file_size > 65536 && !FileNameHash::inuse(fname)) {
       fname = TableFileName(hlsm::config::secondary_storage_path, file_number);
     } else
       fname = TableFileName(dbname_, file_number);
