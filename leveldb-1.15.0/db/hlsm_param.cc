@@ -37,11 +37,12 @@ FILE *debug_fd = stderr;
 
 bool full_mirror = false;
 int mirror_start_level = 0;
-
 bool use_cursor_compaction = false;
 
 bool seqential_read_from_primary = true;
 bool random_read_from_primary = true;
+
+TableLevel table_level;
 } // runtime
 
 } // hlsm

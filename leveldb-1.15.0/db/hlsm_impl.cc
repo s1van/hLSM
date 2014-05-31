@@ -1,6 +1,5 @@
 #include <algorithm>
 
-#include "leveldb/hlsm_types.h"
 #include "leveldb/status.h"
 #include "leveldb/hlsm.h"
 
@@ -10,6 +9,7 @@
 
 #include "table_cache.h"
 #include "db_impl.h"
+
 
 
 namespace leveldb{
@@ -28,10 +28,13 @@ int Version::PreloadMetadata(int max_level) {
 	for (int level = 0; level < std::max(config::kNumLevels, max_level); level++) {
 		size_t num_files = files_[level].size();
 		FileMetaData* const* files = &files_[level][0];
+		DEBUG_INFO(1, "Level %d:\t", level);
 		for (uint32_t i = 0; i < num_files; i++) {
 			Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
+			hlsm::runtime::table_level.add(files[i]->number, level);
+			DEBUG_PRINT(1, "%lu[%d]\t", files[i]->number, hlsm::runtime::table_level.get(files[i]->number));
 		}
-
+		DEBUG_PRINT(1, "\n");
 	}
 	DEBUG_INFO(1, "End\n");
 	return 0;
@@ -50,6 +53,7 @@ Status VersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     	c->edit()->DeleteFile(level, f->number);
     	c->edit()->AddFile(level + 1, f->number, f->file_size,
     	                       f->smallest, f->largest);
+    	hlsm::runtime::table_level.add(f->number, c->level()+1);
     	DEBUG_INFO(3, "[%d/%lu] number: %lu\t size: %lu\n", i+1, num_files, f->number, f->file_size);
     }
 
@@ -102,6 +106,7 @@ int cleanup() {
 
 } // runtime
 
+
 namespace cursor {
 static double MaxBytesForLevel(int level) {
   // Note: the result for level zero is not really used since we set
@@ -140,5 +145,23 @@ double calculate_compaction_score(int level, std::vector<leveldb::FileMetaData*>
 }
 
 } // cursor
+
+
+int TableLevel::get(uint64_t key){
+	return mapping_.find(key)->second;
+}
+
+int TableLevel::add(uint64_t key, int raw_level){
+	DEBUG_INFO(2, "level: %d\tfile number: %lu\n", raw_level, key);
+	mapping_[key] = raw_level;
+	return 0;
+}
+
+int TableLevel::remove(uint64_t key){
+	DEBUG_INFO(2, "file number: %lu\n", key);
+	mapping_.erase(key);
+	return 0;
+}
+
 
 } // hlsm

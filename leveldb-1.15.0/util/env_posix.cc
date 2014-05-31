@@ -390,6 +390,7 @@ class PosixEnv : public Env {
     if (unlink(fname.c_str()) != 0) {
       result = IOError(fname, errno);
     }
+    DEBUG_INFO(2, "%s\n", fname.c_str());
     return result;
   }
 

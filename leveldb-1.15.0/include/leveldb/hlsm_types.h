@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <string>
+#include <tr1/unordered_map>
 
 #include "util/hash.h"
 #include "leveldb/env.h"
@@ -270,6 +271,20 @@ public:
 private:
 	mode_t mode;
 };
+
+/*
+ * Map File Number to Level
+ */
+class TableLevel {
+public:
+	TableLevel() {};
+	int add(uint64_t, int);
+	int get(uint64_t);
+	int remove(uint64_t);
+private:
+	std::tr1::unordered_map<uint64_t, int> mapping_;
+};
+
 } // hlsm
 
 #endif  //HLSM_TYPES_H

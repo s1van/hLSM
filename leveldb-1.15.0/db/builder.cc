@@ -11,6 +11,7 @@
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/iterator.h"
+#include "leveldb/hlsm.h"
 
 namespace leveldb {
 
@@ -27,8 +28,10 @@ Status BuildTable(const std::string& dbname,
   std::string fname = TableFileName(dbname, meta->number);
   if (iter->Valid()) {
     WritableFile* file;
+	hlsm::runtime::table_level.add(meta->number, 0);
     s = env->NewWritableFile(fname, &file);
     if (!s.ok()) {
+      hlsm::runtime::table_level.remove(meta->number);
       return s;
     }
 
@@ -80,6 +83,7 @@ Status BuildTable(const std::string& dbname,
   if (s.ok() && meta->file_size > 0) {
     // Keep it
   } else {
+	hlsm::runtime::table_level.remove(meta->number);
     env->DeleteFile(fname);
   }
   return s;

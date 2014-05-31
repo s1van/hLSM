@@ -36,6 +36,11 @@
 		_FLUSH; \
 	} while(0)
 
+#define _DEBUG_PRINT(_format, ...) do{\
+		fprintf(_DEBUG_FD, _format, ## __VA_ARGS__);\
+		_FLUSH; \
+	} while(0)
+
 #define _DEBUG_INFO(_format, ...) do{\
 		_PRINT_CURRENT_TIME;         \
 		fprintf(_DEBUG_FD, "\t");    \
@@ -65,6 +70,7 @@
 
 /**************** public ****************/
 #define DEBUG_MEASURE(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_MEASURE(__VA_ARGS__))
+#define DEBUG_PRINT(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_INFO(__VA_ARGS__))
 #define DEBUG_META_ITER(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_META_ITER(__VA_ARGS__))
 

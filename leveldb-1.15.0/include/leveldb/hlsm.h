@@ -52,11 +52,12 @@ extern FILE *debug_fd; // initialized using hlsm::config::debug_file (default: s
 
 extern bool full_mirror;
 extern int mirror_start_level;
-
 extern bool use_cursor_compaction;
 
 extern bool seqential_read_from_primary;
 extern bool random_read_from_primary;
+
+extern TableLevel table_level;
 } // runtime
 
 } // hlsm
