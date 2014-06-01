@@ -14,7 +14,7 @@ namespace leveldb {
 
 namespace {
 
-typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&, const bool from_secondary);
+typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&, const bool is_sequential);
 
 class TwoLevelIterator: public Iterator {
  public:
@@ -23,7 +23,7 @@ class TwoLevelIterator: public Iterator {
     BlockFunction block_function,
     void* arg,
     const ReadOptions& options,
-    bool from_secondary = false);
+    bool is_sequential = false);
 
   virtual ~TwoLevelIterator();
 
@@ -75,7 +75,7 @@ class TwoLevelIterator: public Iterator {
   // If data_iter_ is non-NULL, then "data_block_handle_" holds the
   // "index_value" passed to block_function_ to create the data_iter_.
   std::string data_block_handle_;
-  bool from_secondary_;
+  bool is_sequential_;
 };
 
 TwoLevelIterator::TwoLevelIterator(
@@ -83,13 +83,13 @@ TwoLevelIterator::TwoLevelIterator(
     BlockFunction block_function,
     void* arg,
     const ReadOptions& options,
-    bool from_secondary)
+    bool is_sequential)
     : block_function_(block_function),
       arg_(arg),
       options_(options),
       index_iter_(index_iter),
       data_iter_(NULL),
-      from_secondary_(from_secondary) {
+      is_sequential_(is_sequential) {
 }
 
 TwoLevelIterator::~TwoLevelIterator() {
@@ -169,7 +169,7 @@ void TwoLevelIterator::InitDataBlock() {
       // data_iter_ is already constructed with this iterator, so
       // no need to change anything
     } else {
-      Iterator* iter = (*block_function_)(arg_, options_, handle, from_secondary_);
+      Iterator* iter = (*block_function_)(arg_, options_, handle, is_sequential_);
       data_block_handle_.assign(handle.data(), handle.size());
       SetDataIterator(iter);
     }
@@ -183,8 +183,8 @@ Iterator* NewTwoLevelIterator(
     BlockFunction block_function,
     void* arg,
     const ReadOptions& options,
-    const bool from_secondary) {
-  return new TwoLevelIterator(index_iter, block_function, arg, options, from_secondary);
+    const bool is_sequential) {
+  return new TwoLevelIterator(index_iter, block_function, arg, options, is_sequential);
 }
 
 }  // namespace leveldb

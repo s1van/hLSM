@@ -342,9 +342,6 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
     DEBUG_INFO(3, "END\t%s\t%s\n", filename_.c_str(), sfilename_.c_str());
     return s;
   }
-
-
-
-}
+} // hlsm
 
 

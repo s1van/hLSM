@@ -220,7 +220,7 @@ typedef struct {
 
 /************************** Configuration Related *****************************/
 namespace hlsm {
-typedef enum { Default =1, FullMirror, bLSM, hLSM, Unknown} mode_t;
+typedef enum { Default =1, FullMirror, PartialMirror, bLSM, hLSM, Unknown} mode_t;
 class DBMode {
 public:
 	DBMode(mode_t m) {
@@ -243,6 +243,10 @@ public:
 		return (mode == FullMirror);
 	}
 
+	bool isPartialMirror() {
+		return (mode == PartialMirror);
+	}
+
 	bool isbLSM() {
 		return (mode == bLSM);
 	}
@@ -255,6 +259,8 @@ public:
 		if (mstr.find("Default") != std::string::npos)
 			mode = Default;
 		else if (mstr.find("FullMirror") != std::string::npos)
+			mode = FullMirror;
+		else if (mstr.find("PartialMirror") != std::string::npos)
 			mode = FullMirror;
 		else if (mstr.find("bLSM") != std::string::npos)
 			mode = bLSM;
@@ -281,6 +287,7 @@ public:
 	int add(uint64_t, int);
 	int get(uint64_t);
 	int remove(uint64_t);
+	bool withinMirroredLevel(uint64_t);
 private:
 	std::tr1::unordered_map<uint64_t, int> mapping_;
 };

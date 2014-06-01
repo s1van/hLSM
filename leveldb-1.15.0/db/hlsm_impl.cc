@@ -14,7 +14,6 @@
 
 namespace leveldb{
 
-
 Status TableCache::PreLoadTable(uint64_t file_number, uint64_t file_size) {
 	Cache::Handle* handle = NULL;
 	Status s = FindTable(file_number, file_size, &handle);
@@ -39,7 +38,6 @@ int Version::PreloadMetadata(int max_level) {
 	DEBUG_INFO(1, "End\n");
 	return 0;
 }
-
 
 Status VersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     assert(c->num_input_files(1) == 0);
@@ -83,6 +81,11 @@ int init() {
 		mirror_start_level = 0;
 		seqential_read_from_primary = false; // primary is SSD, secondary is HDD
 		random_read_from_primary = true;
+	} else if (hlsm::config::mode.isPartialMirror()) {
+		full_mirror = false;
+		mirror_start_level = 3;
+		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
+		random_read_from_primary = true;
 	} else if (hlsm::config::mode.isbLSM()) {
 		full_mirror = false;
 		use_cursor_compaction = true;
@@ -93,7 +96,6 @@ int init() {
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
 		random_read_from_primary = false;
 	}
-
 	return 0;
 }
 
@@ -148,7 +150,10 @@ double calculate_compaction_score(int level, std::vector<leveldb::FileMetaData*>
 
 
 int TableLevel::get(uint64_t key){
-	return mapping_.find(key)->second;
+	if (mapping_.find(key) == mapping_.end())
+		return -1;
+	else
+		return mapping_.find(key)->second;
 }
 
 int TableLevel::add(uint64_t key, int raw_level){
@@ -163,5 +168,10 @@ int TableLevel::remove(uint64_t key){
 	return 0;
 }
 
+bool TableLevel::withinMirroredLevel(uint64_t key){
+	int level = get(key);
+	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
+	return (level >= runtime::mirror_start_level);
+}
 
 } // hlsm

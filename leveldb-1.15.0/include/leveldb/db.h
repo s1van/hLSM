@@ -89,7 +89,7 @@ class DB {
   //
   // Caller should delete the iterator when it is no longer needed.
   // The returned iterator should be deleted before this db is deleted.
-  virtual Iterator* NewIterator(const ReadOptions& options, bool from_secondary=false) = 0;
+  virtual Iterator* NewIterator(const ReadOptions& options, bool is_sequential=false) = 0;
 
   // Return a handle to the current DB state.  Iterators created with
   // this handle will all observe a stable snapshot of the current DB

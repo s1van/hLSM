@@ -60,7 +60,7 @@ class Table {
   Rep* rep_;
 
   explicit Table(Rep* rep) { rep_ = rep; }
-  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&, bool from_secondary = false);
+  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&, bool is_sequential = false);
 
   // Calls (*handle_result)(arg, ...) with the entry found after a call
   // to Seek(key).  May not make such a call if filter policy says

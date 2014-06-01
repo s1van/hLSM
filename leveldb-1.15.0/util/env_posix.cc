@@ -358,7 +358,7 @@ class PosixEnv : public Env {
       *result = NULL;
       s = IOError(fname, errno);
     } else {
-      if (hlsm::runtime::full_mirror && FILE_HAS_SUFFIX(fname, "ldb"))
+      if (hlsm::is_mirrored_write(fname))
     	  *result = new hlsm::FullMirror_PosixWritableFile(fname, f);
       else
     	  *result = new PosixWritableFile(fname, f);
@@ -386,12 +386,17 @@ class PosixEnv : public Env {
   }
 
   virtual Status DeleteFile(const std::string& fname) {
-    Status result;
-    if (unlink(fname.c_str()) != 0) {
-      result = IOError(fname, errno);
-    }
     DEBUG_INFO(2, "%s\n", fname.c_str());
-    return result;
+    if (unlink(fname.c_str()) != 0) {
+      return IOError(fname, errno);
+    }
+    if (hlsm::is_mirrored_write(fname)) {
+    	if (unlink(PRIMARY_TO_SECONDARY_FILE(fname).c_str()) != 0) {
+    		return IOError(PRIMARY_TO_SECONDARY_FILE(fname), errno);
+    	}
+
+    }
+    return Status::OK();
   }
 
   virtual Status CreateDir(const std::string& name) {

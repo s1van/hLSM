@@ -26,10 +26,10 @@ extern Iterator* NewTwoLevelIterator(
         void* arg,
         const ReadOptions& options,
         const Slice& index_value,
-        const bool from_secondary),
+        const bool is_sequential),
     void* arg,
     const ReadOptions& options,
-    bool from_secondary = false);
+    bool is_sequential = false);
 
 }  // namespace leveldb
 

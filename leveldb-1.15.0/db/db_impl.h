@@ -35,7 +35,7 @@ class DBImpl : public DB {
   virtual Status Get(const ReadOptions& options,
                      const Slice& key,
                      std::string* value);
-  virtual Iterator* NewIterator(const ReadOptions&, bool from_secondary=false);
+  virtual Iterator* NewIterator(const ReadOptions&, bool is_sequential=false);
   virtual const Snapshot* GetSnapshot();
   virtual void ReleaseSnapshot(const Snapshot* snapshot);
   virtual bool GetProperty(const Slice& property, std::string* value);
@@ -71,7 +71,7 @@ class DBImpl : public DB {
 
   Iterator* NewInternalIterator(const ReadOptions&,
                                 SequenceNumber* latest_snapshot,
-                                uint32_t* seed, bool from_secondary=false);
+                                uint32_t* seed, bool is_sequential=false);
 
   Status NewDB();
 

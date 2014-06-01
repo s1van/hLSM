@@ -46,20 +46,20 @@ TableCache::~TableCache() {
 }
 
 Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
-                             Cache::Handle** handle, bool from_secondary) {
+                             Cache::Handle** handle, bool is_sequential) {
   Status s;
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
   Slice key(buf, sizeof(buf));
 
-  if (from_secondary)
+  if (is_sequential)
     *handle = mcache_->Lookup(key);
   else
     *handle = cache_->Lookup(key);
 
   if (*handle == NULL) {
     std::string fname;
-    if (from_secondary && hlsm::runtime::full_mirror && file_size > 65536 && !FileNameHash::inuse(fname)) {
+    if (is_sequential && hlsm::runtime::full_mirror && file_size > 65536 && !FileNameHash::inuse(fname)) {
       fname = TableFileName(hlsm::config::secondary_storage_path, file_number);
     } else
       fname = TableFileName(dbname_, file_number);
@@ -86,7 +86,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       TableAndFile* tf = new TableAndFile;
       tf->file = file;
       tf->table = table;
-      if (from_secondary)
+      if (is_sequential)
         *handle = mcache_->Insert(key, tf, 1, &DeleteEntry);
       else
         *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
@@ -98,25 +98,25 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 Iterator* TableCache::NewIterator(const ReadOptions& options,
                                   uint64_t file_number,
                                   uint64_t file_size,
-                                  Table** tableptr, bool from_secondary) {
+                                  Table** tableptr, bool is_sequential) {
   if (tableptr != NULL) {
     *tableptr = NULL;
   }
 
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle, from_secondary);
+  Status s = FindTable(file_number, file_size, &handle, is_sequential);
   if (!s.ok()) {
     return NewErrorIterator(s);
   }
 
   Table* table;
-  if (from_secondary)
+  if (is_sequential)
     table = reinterpret_cast<TableAndFile*>(mcache_->Value(handle))->table;
   else
     table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
 
   Iterator* result = table->NewIterator(options);
-  if (from_secondary)
+  if (is_sequential)
     result->RegisterCleanup(&UnrefEntry, mcache_, handle);
   else
     result->RegisterCleanup(&UnrefEntry, cache_, handle);

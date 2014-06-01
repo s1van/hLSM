@@ -34,7 +34,7 @@ class TableCache {
                         uint64_t file_number,
                         uint64_t file_size,
                         Table** tableptr = NULL,
-                        bool from_secondary = false);
+                        bool is_sequential = false);
 
   // If a seek to internal key "k" in specified file finds an entry,
   // call (*handle_result)(arg, found_key, found_value).
@@ -56,7 +56,7 @@ class TableCache {
   Cache* cache_;
   Cache* mcache_;
 
-  Status FindTable(uint64_t file_number, uint64_t file_size, Cache::Handle**, bool from_secondary = false);
+  Status FindTable(uint64_t file_number, uint64_t file_size, Cache::Handle**, bool is_sequential = false);
 };
 
 }  // namespace leveldb

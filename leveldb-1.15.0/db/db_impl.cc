@@ -160,7 +160,7 @@ DBImpl::~DBImpl() {
     env_->UnlockFile(db_lock_);
   }
 
-  if (hlsm::runtime::full_mirror && hlsm::config::use_opq_thread) {
+  if (hlsm::config::use_opq_thread) {
 		uint64_t primary_end_at = Env::Default()->NowMicros();
 		OPQ_ADD_HALT(hlsm::runtime::op_queue);
 		if (hlsm::runtime::opq_helper != NULL) pthread_join(*hlsm::runtime::opq_helper, NULL);
@@ -1064,7 +1064,7 @@ static void CleanupIteratorState(void* arg1, void* arg2) {
 
 Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
                                       SequenceNumber* latest_snapshot,
-                                      uint32_t* seed, bool from_secondary) {
+                                      uint32_t* seed, bool is_sequential) {
   IterState* cleanup = new IterState;
   mutex_.Lock();
   *latest_snapshot = versions_->LastSequence();
@@ -1077,7 +1077,7 @@ Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
     list.push_back(imm_->NewIterator());
     imm_->Ref();
   }
-  versions_->current()->AddIterators(options, &list, from_secondary);
+  versions_->current()->AddIterators(options, &list, is_sequential);
   Iterator* internal_iter =
       NewMergingIterator(&internal_comparator_, &list[0], list.size());
   versions_->current()->Ref();
@@ -1151,10 +1151,10 @@ Status DBImpl::Get(const ReadOptions& options,
   return s;
 }
 
-Iterator* DBImpl::NewIterator(const ReadOptions& options, bool from_secondary) {
+Iterator* DBImpl::NewIterator(const ReadOptions& options, bool is_sequential) {
   SequenceNumber latest_snapshot;
   uint32_t seed;
-  Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed, from_secondary);
+  Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed, is_sequential);
   return NewDBIterator(
       this, user_comparator(), iter,
       (options.snapshot != NULL
@@ -1471,7 +1471,7 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 }
 
 DB::~DB() {
-  if (hlsm::runtime::full_mirror && hlsm::config::use_opq_thread) {
+  if (hlsm::config::use_opq_thread) {
 	OPQ_ADD_HALT(hlsm::runtime::op_queue);
 	DEBUG_INFO(1, "DB Released\n");
   }
