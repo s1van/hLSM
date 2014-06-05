@@ -7,8 +7,10 @@
 
 #include "db/dbformat.h"
 #include "db/version_edit.h"
+#include "db/filename.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
+#include "leveldb/env.h"
 
 namespace hlsm {
 namespace runtime {
@@ -43,6 +45,8 @@ namespace cursor {
 double calculate_compaction_score(int, std::vector<leveldb::FileMetaData*> *);
 
 } // cursor
+
+int delete_secondary_file(leveldb::Env* const, uint64_t);
 
 } // hlsm
 

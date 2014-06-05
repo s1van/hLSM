@@ -83,7 +83,6 @@ Status BuildTable(const std::string& dbname,
   if (s.ok() && meta->file_size > 0) {
     // Keep it
   } else {
-	hlsm::runtime::table_level.remove(meta->number);
     env->DeleteFile(fname);
   }
   return s;

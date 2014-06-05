@@ -2,10 +2,12 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <errno.h>
-#include <fcntl.h>
+#include <sys/sendfile.h>  // sendfile
+#include <fcntl.h>         // open
+#include <unistd.h>        // close
+#include <sys/stat.h>      // fstat
+#include <sys/types.h>     // fstat
 
-#include "leveldb/hlsm_types.h"
-#include "leveldb/hlsm_debug.h"
 #include "leveldb/hlsm.h"
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
@@ -26,6 +28,21 @@ static size_t Roundup(size_t x, size_t y) {
 
 static Status IOError(const std::string& context, int err_number) {
   return Status::IOError(context, strerror(err_number));
+}
+
+int copy_file(const char *dst, const char *src){
+	int source = open(src, O_RDONLY, 0);
+	int dest = open(dst, O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0644);
+
+	// struct required, rationale: function stat() exists also
+	struct stat stat_source;
+	fstat(source, &stat_source);
+	sendfile(dest, source, 0, stat_source.st_size);
+
+	close(source);
+	close(dest);
+
+	return 0;
 }
 
 static void *opq_helper(void * arg) {
@@ -82,6 +99,12 @@ static void *opq_helper(void * arg) {
 				DEBUG_INFO(3, "MDelete\tfname: %s\n", fname->c_str());
 				delete fname;
 
+			} else if (op->type == MCopyFile) {
+				std::string *fname = (std::string*) (op->ptr1);
+				copy_file(PRIMARY_TO_SECONDARY_FILE((*fname)).c_str(), fname->c_str());
+				DEBUG_INFO(2, "MCopyFile\tfname: %s\n", fname->c_str());
+				delete fname;
+
 			} else if (op->type == MHalt) {
 				DEBUG_INFO(3, "MHalt");
 				break;
@@ -97,6 +120,11 @@ static void *opq_helper(void * arg) {
 
 	DEBUG_INFO(1, "Stop OPQ Helper\tQueue: %p\n", op_queue);
   return NULL;
+}
+
+int init_opq_helpler() {
+	INIT_HELPER_AND_QUEUE(OPQ_HELPER, OPQ);
+	return 0;
 }
 
 
@@ -204,13 +232,13 @@ class PosixBufferFile : public leveldb::WritableFile {
 		limit_ = base_ + buffer_size_;
 		fd_ = fileno(f);
 		DEBUG_INFO(2, "%s\n", filename_.c_str());
-		FileNameHash::add(filename_);
+		runtime::FileNameHash::add(filename_);
   }
 
 
   ~PosixBufferFile() {
     if (file_ != NULL) {
-    	FileNameHash::drop(filename_);
+    	runtime::FileNameHash::drop(filename_);
     	PosixBufferFile::Close();
     }
   }
@@ -275,10 +303,6 @@ FullMirror_PosixWritableFile::FullMirror_PosixWritableFile(const std::string& fn
 		sfile_ = fdopen(sfd_, "w" );
 	}
 	DEBUG_INFO(2,"Primary: %s\t%p\tSecondary: %s\t%p\t%d\n",filename_.c_str(), file_, sfilename_.c_str(), sfile_, sfd_);
-
-	if (USE_OPQ) {
-		INIT_HELPER_AND_QUEUE(OPQ_HELPER, OPQ);
-	}
 
 	if (hlsm::config::secondary_use_buffer_file) {
 		sfp_ = new PosixBufferFile(sfilename_, sfile_);

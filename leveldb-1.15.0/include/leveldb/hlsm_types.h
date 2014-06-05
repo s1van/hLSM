@@ -11,7 +11,6 @@
 #include "leveldb/env.h"
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
-#include "leveldb/hlsm_debug.h"
 
 namespace hlsm {
 
@@ -39,45 +38,12 @@ public:
 
 }
 
-/************************** For Mirror Write Status ****************************/
-
-namespace leveldb {
-
-class FileNameHash {
-#define HSIZE 4096
-private:
-	static uint32_t hash[HSIZE];
-
-public:
-	static int add(const std::string filename) {
-		uint32_t h = Hash(filename.c_str(), filename.length(), 1);
-		hash[h%HSIZE]++;
-		return 0;
-	}
-
-	static int drop(const std::string filename) {
-		uint32_t h = Hash(filename.c_str(), filename.length(), 1);
-		hash[h%HSIZE]--;
-
-		return 0;
-	}
-
-	static int inuse(const std::string filename) {
-		uint32_t h = Hash(filename.c_str(), filename.length(), 1);
-		return (hash[h%HSIZE]>0);
-	}
-
-#undef HSIZE
-};
-
-}
-
 /************************** Asynchronous Mirror I/O *****************************/
 
 //1. Status Append(const Slice& data)
 //2. Status Sync()
 //3. Status Close()
-typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose, MTruncate} mio_op_t;
+typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose, MTruncate, MCopyFile} mio_op_t;
 
 typedef struct {
 	mio_op_t type;
@@ -196,6 +162,13 @@ typedef struct {
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
+#define OPQ_ADD_COPYFILE(q_, fname_)	do{	\
+		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
+		op_->type = MCopyFile;		\
+		op_->ptr1 = (void*)fname_;	\
+		OPQ_ADD(q_, op_);		\
+	} while(0)
+
 #define OPQ_POP(q_, op_) do{	\
 		struct entry_ *e_;				\
 		pthread_mutex_lock(&(q_->mutex) );	\
@@ -213,14 +186,13 @@ typedef struct {
 			queue_ = OPQ_MALLOC;\
 			OPQ_INIT(queue_);   \
 			pthread_create(helper_, NULL,  &hlsm::opq_helper, queue_);	\
-			DEBUG_INFO(1, "Init OPQ Helper\tQueue: %p\n", queue_);\
 		}\
 	} while (0)
 
 
 /************************** Configuration Related *****************************/
 namespace hlsm {
-typedef enum { Default =1, FullMirror, PartialMirror, bLSM, hLSM, Unknown} mode_t;
+typedef enum { Default =1, FullMirror, PartialMirror, bLSM, PartialbLSM ,hLSM, Unknown} mode_t;
 class DBMode {
 public:
 	DBMode(mode_t m) {
@@ -251,6 +223,10 @@ public:
 		return (mode == bLSM);
 	}
 
+	bool isPartialbLSM() {
+		return (mode == PartialbLSM);
+	}
+
 	bool ishLSM() {
 		return (mode == hLSM);
 	}
@@ -261,7 +237,9 @@ public:
 		else if (mstr.find("FullMirror") != std::string::npos)
 			mode = FullMirror;
 		else if (mstr.find("PartialMirror") != std::string::npos)
-			mode = FullMirror;
+			mode = PartialMirror;
+		else if (mstr.find("PartialbLSM") != std::string::npos)
+			mode = PartialbLSM;
 		else if (mstr.find("bLSM") != std::string::npos)
 			mode = bLSM;
 		else if (mstr.find("hLSM") != std::string::npos)
@@ -286,11 +264,46 @@ public:
 	TableLevel() {};
 	int add(uint64_t, int);
 	int get(uint64_t);
+	uint64_t getLatest();
 	int remove(uint64_t);
 	bool withinMirroredLevel(uint64_t);
 private:
 	std::tr1::unordered_map<uint64_t, int> mapping_;
+	uint64_t latest;
 };
+
+namespace runtime {
+/*
+ * Check if a file is currently written to secondary storage
+ */
+class FileNameHash {
+#define HSIZE 4096
+private:
+	static uint32_t hash[HSIZE];
+
+public:
+	static int add(const std::string filename) {
+		uint32_t h = leveldb::Hash(filename.c_str(), filename.length(), 1);
+		hash[h%HSIZE]++;
+		return 0;
+	}
+
+	static int drop(const std::string filename) {
+		uint32_t h = leveldb::Hash(filename.c_str(), filename.length(), 1);
+		hash[h%HSIZE]--;
+
+		return 0;
+	}
+
+	static int inuse(const std::string filename) {
+		uint32_t h = leveldb::Hash(filename.c_str(), filename.length(), 1);
+		return (hash[h%HSIZE]>0);
+	}
+
+#undef HSIZE
+};
+
+} // runtime
 
 } // hlsm
 

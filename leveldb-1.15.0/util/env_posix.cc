@@ -310,8 +310,9 @@ class PosixEnv : public Env {
     abort();
   }
 
-  virtual Status NewSequentialFile(const std::string& fname,
+  virtual Status NewSequentialFile(const std::string& fname_,
                                    SequentialFile** result) {
+	std::string fname = hlsm::reloacte_file(fname_);
     FILE* f = fopen(fname.c_str(), "r");
     if (f == NULL) {
       *result = NULL;
@@ -322,10 +323,11 @@ class PosixEnv : public Env {
     }
   }
 
-  virtual Status NewRandomAccessFile(const std::string& fname,
+  virtual Status NewRandomAccessFile(const std::string& fname_,
                                      RandomAccessFile** result) {
     *result = NULL;
     Status s;
+    std::string fname = hlsm::reloacte_file(fname_);
     int fd = open(fname.c_str(), O_RDONLY);
     if (fd < 0) {
       s = IOError(fname, errno);
@@ -350,9 +352,11 @@ class PosixEnv : public Env {
     return s;
   }
 
-  virtual Status NewWritableFile(const std::string& fname,
+  virtual Status NewWritableFile(const std::string& fname_,
                                  WritableFile** result) {
     Status s;
+    std::string fname = hlsm::reloacte_file(fname_);
+    DEBUG_INFO(2, "original: %s\trelocated: %s\n", fname_.c_str(), fname.c_str());
     FILE* f = fopen(fname.c_str(), "w");
     if (f == NULL) {
       *result = NULL;
@@ -367,13 +371,14 @@ class PosixEnv : public Env {
   }
 
   virtual bool FileExists(const std::string& fname) {
-    return access(fname.c_str(), F_OK) == 0;
+    return access(hlsm::reloacte_file(fname).c_str(), F_OK) == 0;
   }
 
   virtual Status GetChildren(const std::string& dir,
                              std::vector<std::string>* result) {
     result->clear();
     DIR* d = opendir(dir.c_str());
+    DIR* sd = opendir(hlsm::config::secondary_storage_path);
     if (d == NULL) {
       return IOError(dir, errno);
     }
@@ -381,20 +386,25 @@ class PosixEnv : public Env {
     while ((entry = readdir(d)) != NULL) {
       result->push_back(entry->d_name);
     }
+    while ((entry = readdir(sd)) != NULL) { // ldb
+    	if (!FILE_HAS_SUFFIX(std::string(entry->d_name), ".ldb"))
+    		result->push_back(entry->d_name);
+    }
     closedir(d);
+    closedir(sd);
     return Status::OK();
   }
 
-  virtual Status DeleteFile(const std::string& fname) {
+  virtual Status DeleteFile(const std::string& fname_) {
+	std::string fname = hlsm::reloacte_file(fname_);
     DEBUG_INFO(2, "%s\n", fname.c_str());
     if (unlink(fname.c_str()) != 0) {
       return IOError(fname, errno);
     }
     if (hlsm::is_mirrored_write(fname)) {
-    	if (unlink(PRIMARY_TO_SECONDARY_FILE(fname).c_str()) != 0) {
-    		return IOError(PRIMARY_TO_SECONDARY_FILE(fname), errno);
-    	}
-
+    	OPQ_ADD_DELETE(hlsm::runtime::op_queue,
+    			new std::string(PRIMARY_TO_SECONDARY_FILE(fname)));
+    	hlsm::runtime::table_level.remove(hlsm::table_name_to_number(fname));
     }
     return Status::OK();
   }
@@ -415,7 +425,8 @@ class PosixEnv : public Env {
     return result;
   }
 
-  virtual Status GetFileSize(const std::string& fname, uint64_t* size) {
+  virtual Status GetFileSize(const std::string& fname_, uint64_t* size) {
+	std::string fname = hlsm::reloacte_file(fname_);
     Status s;
     struct stat sbuf;
     if (stat(fname.c_str(), &sbuf) != 0) {
@@ -427,7 +438,9 @@ class PosixEnv : public Env {
     return s;
   }
 
-  virtual Status RenameFile(const std::string& src, const std::string& target) {
+  virtual Status RenameFile(const std::string& src_, const std::string& target_) {
+	std::string src = hlsm::reloacte_file(src_);
+	std::string target = hlsm::reloacte_file(target_);
     Status result;
     if (rename(src.c_str(), target.c_str()) != 0) {
       result = IOError(src, errno);
@@ -435,7 +448,8 @@ class PosixEnv : public Env {
     return result;
   }
 
-  virtual Status LockFile(const std::string& fname, FileLock** lock) {
+  virtual Status LockFile(const std::string& fname_, FileLock** lock) {
+	std::string fname = hlsm::reloacte_file(fname_);
     *lock = NULL;
     Status result;
     int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
@@ -494,7 +508,8 @@ class PosixEnv : public Env {
     return thread_id;
   }
 
-  virtual Status NewLogger(const std::string& fname, Logger** result) {
+  virtual Status NewLogger(const std::string& fname_, Logger** result) {
+	std::string fname = hlsm::reloacte_file(fname_);
     FILE* f = fopen(fname.c_str(), "w");
     if (f == NULL) {
       *result = NULL;

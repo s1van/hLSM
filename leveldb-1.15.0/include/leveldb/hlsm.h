@@ -12,5 +12,6 @@
 #include "leveldb/hlsm_debug.h"
 #include "leveldb/hlsm_types.h"
 #include "leveldb/hlsm_func.h"
+#include "leveldb/hlsm_param.h"
 
 #endif  //HLSM_H

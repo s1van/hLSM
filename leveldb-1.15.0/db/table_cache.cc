@@ -52,17 +52,10 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   EncodeFixed64(buf, file_number);
   Slice key(buf, sizeof(buf));
 
-  if (is_sequential)
-    *handle = mcache_->Lookup(key);
-  else
-    *handle = cache_->Lookup(key);
-
+  *handle = cache_->Lookup(key);
   if (*handle == NULL) {
-    std::string fname;
-    if (is_sequential && hlsm::runtime::full_mirror && file_size > 65536 && !FileNameHash::inuse(fname)) {
-      fname = TableFileName(hlsm::config::secondary_storage_path, file_number);
-    } else
-      fname = TableFileName(dbname_, file_number);
+    std::string sfname = TableFileName(hlsm::config::secondary_storage_path, file_number);
+    std::string fname = TableFileName(dbname_, file_number);
 
     RandomAccessFile* file = NULL;
     Table* table = NULL;
@@ -74,7 +67,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       }
     }
     if (s.ok()) {
-      s = Table::Open(*options_, file, file_size, &table);
+      s = Table::Open(*options_, file, file_size, &table, sfname, is_sequential);
     }
 
     if (!s.ok()) {
@@ -86,10 +79,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       TableAndFile* tf = new TableAndFile;
       tf->file = file;
       tf->table = table;
-      if (is_sequential)
-        *handle = mcache_->Insert(key, tf, 1, &DeleteEntry);
-      else
-        *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
+      *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   }
   return s;

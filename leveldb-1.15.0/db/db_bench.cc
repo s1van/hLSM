@@ -1207,6 +1207,7 @@ int main(int argc, char** argv) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+      hlsm::config::primary_storage_path = FLAGS_db;
     } else if (sscanf(argv[i], "--read_percent=%d%c", &n, &junk) == 1) {
       FLAGS_read_percent = n;
     } else if (sscanf(argv[i], "--read_key_from=%ld%c", &n64, &junk) == 1) {
@@ -1221,8 +1222,8 @@ int main(int argc, char** argv) {
       hlsm::config::mode.set(argv[i] + 12);
     } else if (sscanf(argv[i], "--hlsm_cursor_compaction=%d%c", &n, &junk) == 1) {
       hlsm::runtime::use_cursor_compaction = n;
-    } else if (strncmp(argv[i], "--hlsm_second_storage_path=", 27) == 0) {
-      hlsm::config::secondary_storage_path = argv[i] + 27;
+    } else if (strncmp(argv[i], "--hlsm_secondary_storage_path=", 30) == 0) {
+      hlsm::config::secondary_storage_path = argv[i] + 30;
     } else if (sscanf(argv[i], "--file_size=%d%c", &n, &junk) == 1) {
       leveldb::config::kTargetFileSize = n * 1048576; // in MiB
     } else if (sscanf(argv[i], "--level0_size=%d%c", &n, &junk) == 1) {

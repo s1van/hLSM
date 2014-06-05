@@ -32,6 +32,11 @@ struct Table::Rep {
   FilterBlockReader* filter;
   const char* filter_data;
 
+  RandomAccessFile* primary_;
+  std::string sfname_;
+  RandomAccessFile* secondary_; // file may not exist at the beginning, if so, use sfname to open later
+  bool should_read_from_secondary;
+
   BlockHandle metaindex_handle;  // Handle to metaindex_block: saved from footer
   Block* index_block;
 };
@@ -39,7 +44,34 @@ struct Table::Rep {
 Status Table::Open(const Options& options,
                    RandomAccessFile* file,
                    uint64_t size,
-                   Table** table) {
+                   Table** table, std::string sfname, bool is_sequential) {
+
+  RandomAccessFile* f = file;
+  RandomAccessFile* secondary_ = NULL;
+  bool should_read_from_secondary = false;
+  if (sfname.empty()) {
+	  if (hlsm::is_mirrored_write(sfname)) {
+		  if (!hlsm::runtime::FileNameHash::inuse(sfname)) { // file is written right now
+			  Status s = options.env->NewRandomAccessFile(sfname, &secondary_);
+			  if (!hlsm::read_from_primary(is_sequential)) {
+				  f = secondary_;
+				  should_read_from_secondary = true;
+			  }
+		  } else {
+			  if (!hlsm::read_from_primary(is_sequential)) {
+				  should_read_from_secondary = true;
+			  }
+		  }
+	  }
+	  DEBUG_INFO(2, "%s\t%d\t%d\n", sfname.c_str(), is_sequential, should_read_from_secondary);
+  }
+
+
+
+  if (is_sequential) { // pre-fetch the entire table
+
+  }
+
   *table = NULL;
   if (size < Footer::kEncodedLength) {
     return Status::InvalidArgument("file is too short to be an sstable");
@@ -47,7 +79,7 @@ Status Table::Open(const Options& options,
 
   char footer_space[Footer::kEncodedLength];
   Slice footer_input;
-  Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
+  Status s = f->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
                         &footer_input, footer_space);
   if (!s.ok()) return s;
 
@@ -59,7 +91,7 @@ Status Table::Open(const Options& options,
   BlockContents contents;
   Block* index_block = NULL;
   if (s.ok()) {
-    s = ReadBlock(file, ReadOptions(), footer.index_handle(), &contents);
+    s = ReadBlock(f, ReadOptions(), footer.index_handle(), &contents);
     if (s.ok()) {
       index_block = new Block(contents);
       DEBUG_INFO(2, "table size: %lu\tindex size: %lu\n", size, contents.data.size());
@@ -71,12 +103,18 @@ Status Table::Open(const Options& options,
     // ready to serve requests.
     Rep* rep = new Table::Rep;
     rep->options = options;
-    rep->file = file;
+    rep->file = f;
     rep->metaindex_handle = footer.metaindex_handle();
     rep->index_block = index_block;
     rep->cache_id = (options.block_cache ? options.block_cache->NewId() : 0);
     rep->filter_data = NULL;
     rep->filter = NULL;
+
+    rep->primary_ = file;
+    rep->secondary_ = secondary_;
+    rep->should_read_from_secondary = should_read_from_secondary;
+    rep->sfname_ = sfname;
+
     *table = new Table(rep);
     (*table)->ReadMeta(footer);
   } else {

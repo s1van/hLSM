@@ -9,6 +9,7 @@
 
 #include "table_cache.h"
 #include "db_impl.h"
+#include "filename.h"
 
 
 
@@ -55,6 +56,13 @@ Status VersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     	DEBUG_INFO(3, "[%d/%lu] number: %lu\t size: %lu\n", i+1, num_files, f->number, f->file_size);
     }
 
+    if (c->level() + 1 == hlsm::runtime::mirror_start_level) // need to copy the content to secondary
+    	for(int i = 0; i < num_files; i++) {
+    		leveldb::FileMetaData* f = files[i];
+    		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
+    			new std::string(leveldb::TableFileName(hlsm::config::primary_storage_path, f->number)) );
+    	}
+
     leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
     return status;
 }
@@ -81,21 +89,41 @@ int init() {
 		mirror_start_level = 0;
 		seqential_read_from_primary = false; // primary is SSD, secondary is HDD
 		random_read_from_primary = true;
+		meta_on_primary = true;
+		log_on_primary = true;
 	} else if (hlsm::config::mode.isPartialMirror()) {
 		full_mirror = false;
 		mirror_start_level = 3;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
 		random_read_from_primary = true;
+		meta_on_primary = false;
+		log_on_primary = false;
 	} else if (hlsm::config::mode.isbLSM()) {
 		full_mirror = false;
 		use_cursor_compaction = true;
+		meta_on_primary = true;
+		log_on_primary = true;
+	} else if (hlsm::config::mode.isPartialbLSM()) {
+		full_mirror = false;
+		mirror_start_level = 3;
+		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
+		random_read_from_primary = true;
+		use_cursor_compaction = true;
+		meta_on_primary = false;
+		log_on_primary = false;
 	} else if (hlsm::config::mode.ishLSM()) {
 		full_mirror = false;
 		mirror_start_level = 6; // logical level
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
 		random_read_from_primary = false;
+		meta_on_primary = false;
+		log_on_primary = false;
 	}
+
+	if (hlsm::config::use_opq_thread)
+		hlsm::init_opq_helpler();
+
 	return 0;
 }
 
@@ -156,9 +184,14 @@ int TableLevel::get(uint64_t key){
 		return mapping_.find(key)->second;
 }
 
+uint64_t TableLevel::getLatest() {
+	return latest;
+}
+
 int TableLevel::add(uint64_t key, int raw_level){
 	DEBUG_INFO(2, "level: %d\tfile number: %lu\n", raw_level, key);
 	mapping_[key] = raw_level;
+	latest = key;
 	return 0;
 }
 
@@ -172,6 +205,14 @@ bool TableLevel::withinMirroredLevel(uint64_t key){
 	int level = get(key);
 	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
 	return (level >= runtime::mirror_start_level);
+}
+
+int delete_secondary_file(leveldb::Env* const env, uint64_t number) {
+	std::string fname = leveldb::TableFileName(hlsm::config::secondary_storage_path, number);
+	if (env->FileExists(fname))
+		env->DeleteFile(fname);
+
+return 0;
 }
 
 } // hlsm

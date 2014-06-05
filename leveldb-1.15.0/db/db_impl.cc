@@ -27,6 +27,7 @@
 #include "leveldb/table.h"
 #include "leveldb/table_builder.h"
 #include "leveldb/hlsm.h"
+#include "db/hlsm_impl.h"
 #include "port/port.h"
 #include "table/block.h"
 #include "table/merger.h"
@@ -271,7 +272,6 @@ void DBImpl::DeleteObsoleteFiles() {
       if (!keep) {
         if (type == kTableFile) {
           table_cache_->Evict(number);
-          hlsm::runtime::table_level.remove(number);
         }
         Log(options_.info_log, "Delete type=%d #%lld\n",
             int(type),
@@ -444,6 +444,8 @@ Status DBImpl::RecoverLogFile(uint64_t log_number,
 
     if (mem->ApproximateMemoryUsage() > options_.write_buffer_size) {
       status = WriteLevel0Table(mem, edit, NULL);
+      DEBUG_INFO(2, "Level 0 Table: %lu\n", hlsm::runtime::table_level.getLatest());
+      hlsm::delete_secondary_file(env_, hlsm::runtime::table_level.getLatest());
       if (!status.ok()) {
         // Reflect errors immediately so that conditions like full
         // file-systems cause the DB::Open() to fail.
@@ -456,6 +458,8 @@ Status DBImpl::RecoverLogFile(uint64_t log_number,
 
   if (status.ok() && mem != NULL) {
     status = WriteLevel0Table(mem, edit, NULL);
+    DEBUG_INFO(2, "Level 0 Table: %lu\n", hlsm::runtime::table_level.getLatest());
+    hlsm::delete_secondary_file(env_, hlsm::runtime::table_level.getLatest());
     // Reflect errors immediately so that conditions like full
     // file-systems cause the DB::Open() to fail.
   }
@@ -695,7 +699,7 @@ void DBImpl::BackgroundCompaction() {
   if (c == NULL) {
     // Nothing to do
   } else if (!is_manual && c->IsTrivialMove() && ( !hlsm::runtime::use_cursor_compaction || c->level() % 2 == 0)) {
-	DEBUG_INFO(1, "Trivial move level %d\n", c->level());
+	DEBUG_INFO(1, "Trivial move level %d, file %lu\n", c->level(), c->input(0, 0)->number);
     // Move file to next level
     assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
@@ -703,6 +707,10 @@ void DBImpl::BackgroundCompaction() {
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
                        f->smallest, f->largest);
     hlsm::runtime::table_level.add(f->number, c->level()+1);
+    if (c->level() + 1 == hlsm::runtime::mirror_start_level) { // need to copy the content to secondary
+    	OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
+    			new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+    }
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
       RecordBackgroundError(status);
@@ -714,6 +722,7 @@ void DBImpl::BackgroundCompaction() {
         static_cast<unsigned long long>(f->file_size),
         status.ToString().c_str(),
         versions_->LevelSummary(&tmp));
+
   } else if (!is_manual && hlsm::runtime::use_cursor_compaction && c->level() % 2 == 1) {
 	DEBUG_INFO(1, "Move the entire level %d\n", c->level());
 	// Move entire level to next level
@@ -1500,7 +1509,10 @@ Status DB::Open(const Options& options, const std::string& dbname,
       s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }
     if (s.ok()) {
+      int msl = hlsm::runtime::mirror_start_level;
+      hlsm::runtime::mirror_start_level = -1;
       impl->DeleteObsoleteFiles();
+      hlsm::runtime::mirror_start_level = msl; // Delete all tables that are not in MANIFEST, but appear in secondary store
       impl->MaybeScheduleCompaction();
     }
   }

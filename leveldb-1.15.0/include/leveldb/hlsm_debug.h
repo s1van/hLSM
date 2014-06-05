@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <sys/time.h>
+#include "leveldb/hlsm_param.h"
 
 /**************** private ****************/
 #define _DEBUG_FD hlsm::runtime::debug_fd

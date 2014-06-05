@@ -38,7 +38,7 @@ class Table {
   static Status Open(const Options& options,
                      RandomAccessFile* file,
                      uint64_t file_size,
-                     Table** table);
+                     Table** table, std::string sfname = "", bool is_sequential = false);
 
   ~Table();
 

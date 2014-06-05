@@ -37,6 +37,8 @@
 #include "leveldb/comparator.h"
 #include "leveldb/db.h"
 #include "leveldb/env.h"
+#include "leveldb/hlsm.h"
+#include "db/hlsm_impl.h"
 
 namespace leveldb {
 
