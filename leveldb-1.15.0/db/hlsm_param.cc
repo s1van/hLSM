@@ -16,8 +16,7 @@ namespace hlsm {
 
 namespace config {
 DBMode mode("Default");
-bool use_opq_thread = true;
-int preload_metadata_max_level = 4;
+int preload_metadata_max_level = 5;
 
 char *primary_storage_path = NULL;
 char *secondary_storage_path = NULL;
@@ -35,6 +34,7 @@ pthread_t *opq_helper = NULL;
 opq op_queue = NULL;
 FILE *debug_fd = stderr;
 
+bool use_opq_thread = false;
 bool full_mirror = false;
 int mirror_start_level = 1028;
 bool use_cursor_compaction = false;

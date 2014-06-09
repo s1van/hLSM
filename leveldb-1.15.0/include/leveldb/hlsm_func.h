@@ -17,10 +17,14 @@ inline static int table_name_to_number(const std::string& fname) {
 	return std::atoi(fname.substr(m+1, n-1).c_str());
 }
 
+inline static bool do_prefetch (int is_sequential) {
+	return (is_sequential == 1);
+}
+
 inline static bool is_mirrored_write(const std::string& fname) {
 	DEBUG_INFO(2, "%s\n", fname.c_str());
 	size_t n = fname.find("ldb");
-	if (n != std::string::npos) {
+	if (n != std::string::npos && hlsm::config::secondary_storage_path != NULL) {
 		if (hlsm::runtime::full_mirror) {
 			return true;
 		} else {
@@ -39,7 +43,7 @@ inline bool read_from_primary(bool is_sequential) {
 	return (is_sequential ? hlsm::runtime::seqential_read_from_primary : hlsm::runtime::random_read_from_primary);
 }
 
-inline static std::string reloacte_file(const std::string& fname) {
+inline static std::string relocate_file(const std::string& fname) {
 	DEBUG_INFO(2, "relocate %s\n", fname.c_str());
 	if (FILE_HAS_SUFFIX(fname, ".ldb")) {
 		return fname;

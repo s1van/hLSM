@@ -4,9 +4,18 @@
 #include <iostream>
 #include <stdio.h>
 #include <sys/time.h>
-#include "leveldb/hlsm_param.h"
 
 /**************** private ****************/
+namespace hlsm {
+namespace config {
+extern int debug_level;
+} // config
+
+namespace runtime {
+extern FILE *debug_fd;
+} // runtime
+}
+
 #define _DEBUG_FD hlsm::runtime::debug_fd
 #define _FLUSH do {fflush(_DEBUG_FD);} while(0)
 
@@ -21,6 +30,7 @@
 		fprintf(_DEBUG_FD, "[%s,\t%s: %d]", __FUNCTION__, __FILE__, __LINE__);	\
 		_FLUSH; \
 	} while(0)
+
 
 #define _DEBUG_MEASURE(_func, _tag) do{\
 		_PRINT_CURRENT_TIME;        \

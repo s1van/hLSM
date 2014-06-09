@@ -161,7 +161,7 @@ DBImpl::~DBImpl() {
     env_->UnlockFile(db_lock_);
   }
 
-  if (hlsm::config::use_opq_thread) {
+  if (hlsm::runtime::use_opq_thread) {
 		uint64_t primary_end_at = Env::Default()->NowMicros();
 		OPQ_ADD_HALT(hlsm::runtime::op_queue);
 		if (hlsm::runtime::opq_helper != NULL) pthread_join(*hlsm::runtime::opq_helper, NULL);
@@ -1480,7 +1480,7 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 }
 
 DB::~DB() {
-  if (hlsm::config::use_opq_thread) {
+  if (hlsm::runtime::use_opq_thread) {
 	OPQ_ADD_HALT(hlsm::runtime::op_queue);
 	DEBUG_INFO(1, "DB Released\n");
   }

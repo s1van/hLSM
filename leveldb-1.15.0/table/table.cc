@@ -15,6 +15,7 @@
 #include "table/format.h"
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
+#include "db/hlsm_impl.h"
 
 namespace leveldb {
 
@@ -49,10 +50,14 @@ Status Table::Open(const Options& options,
   RandomAccessFile* f = file;
   RandomAccessFile* secondary_ = NULL;
   bool should_read_from_secondary = false;
-  if (sfname.empty()) {
+  // initialize file descriptor for sfname on secondary store
+  if (!sfname.empty()) {
 	  if (hlsm::is_mirrored_write(sfname)) {
+		  DEBUG_INFO(2, "sfname: %s\tinuse: %d\n",
+				  sfname.c_str(), hlsm::runtime::FileNameHash::inuse(sfname));
 		  if (!hlsm::runtime::FileNameHash::inuse(sfname)) { // file is written right now
 			  Status s = options.env->NewRandomAccessFile(sfname, &secondary_);
+			  DEBUG_INFO(2, "secondary fd: %p\n", secondary_);
 			  if (!hlsm::read_from_primary(is_sequential)) {
 				  f = secondary_;
 				  should_read_from_secondary = true;
@@ -67,9 +72,9 @@ Status Table::Open(const Options& options,
   }
 
 
-
-  if (is_sequential) { // pre-fetch the entire table
-
+  if (hlsm::do_prefetch(is_sequential)) { // pre-fetch the entire table
+	  hlsm::prefetch_file(f, size);
+	  //ToDo: prefetch the table into the block cache
   }
 
   *table = NULL;

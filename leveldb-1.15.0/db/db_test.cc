@@ -1848,7 +1848,7 @@ class ModelDB: public DB {
     assert(false);      // Not implemented
     return Status::NotFound(key);
   }
-  virtual Iterator* NewIterator(const ReadOptions& options) {
+  virtual Iterator* NewIterator(const ReadOptions& options, bool is_sequential) {
     if (options.snapshot == NULL) {
       KVMap* saved = new KVMap;
       *saved = map_;

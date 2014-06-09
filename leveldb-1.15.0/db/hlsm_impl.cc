@@ -2,10 +2,15 @@
 
 #include "leveldb/status.h"
 #include "leveldb/hlsm.h"
+#include "leveldb/table.h"
+#include "leveldb/options.h"
 
-#include "version_set.h"
-#include "version_edit.h"
 #include "port/port_posix.h"
+#include "table/filter_block.h"
+#include "table/format.h"
+
+#include "db/version_set.h"
+#include "db/version_edit.h"
 
 #include "table_cache.h"
 #include "db_impl.h"
@@ -67,6 +72,66 @@ Status VersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     return status;
 }
 
+
+struct Table::Rep {
+  Options options;
+  Status status;
+  RandomAccessFile* file;
+  uint64_t cache_id;
+  FilterBlockReader* filter;
+  const char* filter_data;
+
+  RandomAccessFile* primary_;
+  std::string sfname_;
+  RandomAccessFile* secondary_; // file may not exist at the beginning, if so, use sfname to open later
+  bool should_read_from_secondary; // useful when is_sequential is not available
+
+  BlockHandle metaindex_handle;  // Handle to metaindex_block: saved from footer
+  Block* index_block;
+};
+
+/*
+ *  DO:	direct rep_->file to secondary or primary
+ * PRE:	rep_ must be initialized in advance
+ *  IN:	is_sequential == -1 implies that pattern is unknown
+ */
+int Table::SetFileDescriptor(int is_sequential) {
+	rep_->file = rep_->primary_;
+	if (is_sequential == - 1) { // unknown pattern
+		if (rep_->should_read_from_secondary)
+			if (rep_->secondary_ != NULL) {
+				rep_->file = rep_->secondary_;
+			} else {
+				if (!hlsm::runtime::FileNameHash::inuse(rep_->sfname_)) { // file is written right now
+					Status s = rep_->options.env->NewRandomAccessFile(rep_->sfname_, &(rep_->secondary_));
+					rep_->file = rep_->secondary_;
+				}
+			}
+	} else {
+		if (hlsm::read_from_primary(is_sequential)) {
+			rep_->file = rep_->primary_;
+			rep_->should_read_from_secondary = false;
+		} else if (rep_->secondary_ != NULL) {
+			rep_->file = rep_->secondary_;
+		} else { // need to open the file
+			if (rep_->sfname_ != NULL) {
+				if (hlsm::is_mirrored_write(rep_->sfname_)) {
+					rep_->should_read_from_secondary = true;
+					if (!hlsm::runtime::FileNameHash::inuse(rep_->sfname_)) { // file is written right now
+						Status s = rep_->options.env->NewRandomAccessFile(rep_->sfname_, &(rep_->secondary_));
+						rep_->file = rep_->secondary_;
+					}
+				}
+			}
+		}
+	}
+
+	DEBUG_INFO(3, "is_sequential: %d\tsfname: %s\tfile: %p\tprimary: %p\tsecondary:%p\tinuse: %d\tmirrored: %d\n",
+			is_sequential, rep_->sfname_.c_str(), rep_->file, rep_->primary_, rep_->secondary_,
+			hlsm::runtime::FileNameHash::inuse(rep_->sfname_), hlsm::is_mirrored_write(rep_->sfname_));
+	return 0;
+}
+
 } // leveldb
 
 namespace hlsm{
@@ -91,6 +156,8 @@ int init() {
 		random_read_from_primary = true;
 		meta_on_primary = true;
 		log_on_primary = true;
+		use_opq_thread = true;
+
 	} else if (hlsm::config::mode.isPartialMirror()) {
 		full_mirror = false;
 		mirror_start_level = 3;
@@ -98,11 +165,14 @@ int init() {
 		random_read_from_primary = true;
 		meta_on_primary = false;
 		log_on_primary = false;
+		use_opq_thread = true;
+
 	} else if (hlsm::config::mode.isbLSM()) {
 		full_mirror = false;
 		use_cursor_compaction = true;
 		meta_on_primary = true;
 		log_on_primary = true;
+
 	} else if (hlsm::config::mode.isPartialbLSM()) {
 		full_mirror = false;
 		mirror_start_level = 3;
@@ -111,6 +181,8 @@ int init() {
 		use_cursor_compaction = true;
 		meta_on_primary = false;
 		log_on_primary = false;
+		use_opq_thread = true;
+
 	} else if (hlsm::config::mode.ishLSM()) {
 		full_mirror = false;
 		mirror_start_level = 6; // logical level
@@ -119,9 +191,10 @@ int init() {
 		random_read_from_primary = false;
 		meta_on_primary = false;
 		log_on_primary = false;
+		use_opq_thread = true;
 	}
 
-	if (hlsm::config::use_opq_thread)
+	if (use_opq_thread)
 		hlsm::init_opq_helpler();
 
 	return 0;
@@ -208,11 +281,21 @@ bool TableLevel::withinMirroredLevel(uint64_t key){
 }
 
 int delete_secondary_file(leveldb::Env* const env, uint64_t number) {
+	if (hlsm::config::secondary_storage_path == NULL)
+		return 0;
 	std::string fname = leveldb::TableFileName(hlsm::config::secondary_storage_path, number);
 	if (env->FileExists(fname))
 		env->DeleteFile(fname);
+	return 0;
+}
 
-return 0;
+
+int prefetch_file(leveldb::RandomAccessFile* file, uint64_t size) {
+	leveldb::Slice buffer_input;
+	char *buffer_space = (char*)malloc(size);
+	leveldb::Status s = file->Read(0, size, &buffer_input, buffer_space);
+	free(buffer_space);
+	return 0;
 }
 
 } // hlsm

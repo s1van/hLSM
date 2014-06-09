@@ -20,7 +20,6 @@ namespace hlsm {
 
 namespace config {
 extern DBMode mode;
-extern bool  use_opq_thread;
 extern int preload_metadata_max_level;
 
 extern const char *primary_storage_path;	// primary path holds all the .ldb files
@@ -39,6 +38,7 @@ extern pthread_t *opq_helper;
 extern opq op_queue;
 extern FILE *debug_fd;	// initialized using hlsm::config::debug_file (default: stderr)
 
+extern bool  use_opq_thread;
 extern bool full_mirror;
 extern int mirror_start_level;
 extern bool use_cursor_compaction;

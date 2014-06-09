@@ -13,7 +13,7 @@
 #include "leveldb/status.h"
 #include "leveldb/env.h"
 
-#define USE_OPQ hlsm::config::use_opq_thread
+#define USE_OPQ hlsm::runtime::use_opq_thread
 #define SSPATH hlsm::config::secondary_storage_path
 #define OPQ_HELPER hlsm::runtime::opq_helper
 #define OPQ hlsm::runtime::op_queue
@@ -73,6 +73,8 @@ static void *opq_helper(void * arg) {
 
 			} else if (op->type == MBufClose) {
 				FILE * fp = (FILE *) op->ptr1;
+				std::string *fname = (std::string*) (op->ptr2);
+		    	runtime::FileNameHash::drop(*fname);
 				assert(fclose(fp) == 0);
 				DEBUG_INFO(3, "MBufClose\tfp: %p\n", fp);
 
@@ -238,7 +240,6 @@ class PosixBufferFile : public leveldb::WritableFile {
 
   ~PosixBufferFile() {
     if (file_ != NULL) {
-    	runtime::FileNameHash::drop(filename_);
     	PosixBufferFile::Close();
     }
   }
@@ -273,7 +274,7 @@ class PosixBufferFile : public leveldb::WritableFile {
     Status s;
     OPQ_ADD_BUF_SYNC(OPQ, base_, Roundup(dst_-base_, BLKSIZE), fd_, file_offset_);
     OPQ_ADD_TRUNCATE(OPQ, fd_, file_offset_ + dst_-base_);
-    OPQ_ADD_BUF_CLOSE(OPQ, file_); // pass file_ to make a clean closure
+    OPQ_ADD_BUF_CLOSE(OPQ, file_, new std::string(filename_)); // pass file_ to make a clean closure
 
     file_=NULL;
     base_ = NULL;

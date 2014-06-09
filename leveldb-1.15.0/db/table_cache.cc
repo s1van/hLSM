@@ -36,13 +36,11 @@ TableCache::TableCache(const std::string& dbname,
     : env_(options->env),
       dbname_(dbname),
       options_(options),
-      cache_(NewLRUCache(entries)),
-      mcache_(NewLRUCache(entries)) {
+      cache_(NewLRUCache(entries)) {
 }
 
 TableCache::~TableCache() {
   delete cache_;
-  delete mcache_;
 }
 
 Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
@@ -54,7 +52,6 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 
   *handle = cache_->Lookup(key);
   if (*handle == NULL) {
-    std::string sfname = TableFileName(hlsm::config::secondary_storage_path, file_number);
     std::string fname = TableFileName(dbname_, file_number);
 
     RandomAccessFile* file = NULL;
@@ -67,6 +64,9 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       }
     }
     if (s.ok()) {
+      std::string sfname = "";
+      if (hlsm::config::secondary_storage_path != NULL)
+    	  sfname = TableFileName(hlsm::config::secondary_storage_path, file_number);
       s = Table::Open(*options_, file, file_size, &table, sfname, is_sequential);
     }
 
@@ -100,16 +100,11 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
   }
 
   Table* table;
-  if (is_sequential)
-    table = reinterpret_cast<TableAndFile*>(mcache_->Value(handle))->table;
-  else
-    table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+  table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+  table->SetFileDescriptor(is_sequential);
 
   Iterator* result = table->NewIterator(options);
-  if (is_sequential)
-    result->RegisterCleanup(&UnrefEntry, mcache_, handle);
-  else
-    result->RegisterCleanup(&UnrefEntry, cache_, handle);
+  result->RegisterCleanup(&UnrefEntry, cache_, handle);
 
   if (tableptr != NULL) {
     *tableptr = table;
@@ -127,6 +122,7 @@ Status TableCache::Get(const ReadOptions& options,
   Status s = FindTable(file_number, file_size, &handle);
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+    t->SetFileDescriptor(false);
     s = t->InternalGet(options, k, arg, saver);
     cache_->Release(handle);
   }
@@ -137,7 +133,6 @@ void TableCache::Evict(uint64_t file_number) {
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
   cache_->Erase(Slice(buf, sizeof(buf)));
-  mcache_->Erase(Slice(buf, sizeof(buf)));
 }
 
 }  // namespace leveldb

@@ -11,6 +11,7 @@
 #include "leveldb/env.h"
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
+#include "leveldb/hlsm_debug.h"
 
 namespace hlsm {
 
@@ -134,10 +135,11 @@ typedef struct {
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
-#define OPQ_ADD_BUF_CLOSE(q_, fp_)	do{	\
+#define OPQ_ADD_BUF_CLOSE(q_, fp_, fname_)	do{	\
 		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
 		op_->type = MBufClose;\
 		op_->ptr1 = fp_;	\
+		op_->ptr2 = fname_; \
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
@@ -283,12 +285,14 @@ private:
 
 public:
 	static int add(const std::string filename) {
+		DEBUG_INFO(3,"HashAdd %s\n", filename.c_str());
 		uint32_t h = leveldb::Hash(filename.c_str(), filename.length(), 1);
 		hash[h%HSIZE]++;
 		return 0;
 	}
 
 	static int drop(const std::string filename) {
+		DEBUG_INFO(3,"HashDrop %s\n", filename.c_str());
 		uint32_t h = leveldb::Hash(filename.c_str(), filename.length(), 1);
 		hash[h%HSIZE]--;
 

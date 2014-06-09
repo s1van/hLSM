@@ -312,7 +312,7 @@ class PosixEnv : public Env {
 
   virtual Status NewSequentialFile(const std::string& fname_,
                                    SequentialFile** result) {
-	std::string fname = hlsm::reloacte_file(fname_);
+	std::string fname = hlsm::relocate_file(fname_);
     FILE* f = fopen(fname.c_str(), "r");
     if (f == NULL) {
       *result = NULL;
@@ -327,7 +327,7 @@ class PosixEnv : public Env {
                                      RandomAccessFile** result) {
     *result = NULL;
     Status s;
-    std::string fname = hlsm::reloacte_file(fname_);
+    std::string fname = hlsm::relocate_file(fname_);
     int fd = open(fname.c_str(), O_RDONLY);
     if (fd < 0) {
       s = IOError(fname, errno);
@@ -355,7 +355,7 @@ class PosixEnv : public Env {
   virtual Status NewWritableFile(const std::string& fname_,
                                  WritableFile** result) {
     Status s;
-    std::string fname = hlsm::reloacte_file(fname_);
+    std::string fname = hlsm::relocate_file(fname_);
     DEBUG_INFO(2, "original: %s\trelocated: %s\n", fname_.c_str(), fname.c_str());
     FILE* f = fopen(fname.c_str(), "w");
     if (f == NULL) {
@@ -371,14 +371,13 @@ class PosixEnv : public Env {
   }
 
   virtual bool FileExists(const std::string& fname) {
-    return access(hlsm::reloacte_file(fname).c_str(), F_OK) == 0;
+    return access(hlsm::relocate_file(fname).c_str(), F_OK) == 0;
   }
 
   virtual Status GetChildren(const std::string& dir,
                              std::vector<std::string>* result) {
     result->clear();
     DIR* d = opendir(dir.c_str());
-    DIR* sd = opendir(hlsm::config::secondary_storage_path);
     if (d == NULL) {
       return IOError(dir, errno);
     }
@@ -386,17 +385,23 @@ class PosixEnv : public Env {
     while ((entry = readdir(d)) != NULL) {
       result->push_back(entry->d_name);
     }
-    while ((entry = readdir(sd)) != NULL) { // ldb
-    	if (!FILE_HAS_SUFFIX(std::string(entry->d_name), ".ldb"))
-    		result->push_back(entry->d_name);
-    }
     closedir(d);
-    closedir(sd);
+
+    if (hlsm::config::secondary_storage_path != NULL) {
+    	DIR* sd = opendir(hlsm::config::secondary_storage_path);
+
+    	while ((entry = readdir(sd)) != NULL) { // ldb
+    		if (!FILE_HAS_SUFFIX(std::string(entry->d_name), ".ldb"))
+    			result->push_back(entry->d_name);
+    	}
+    	closedir(sd);
+    }
+
     return Status::OK();
   }
 
   virtual Status DeleteFile(const std::string& fname_) {
-	std::string fname = hlsm::reloacte_file(fname_);
+	std::string fname = hlsm::relocate_file(fname_);
     DEBUG_INFO(2, "%s\n", fname.c_str());
     if (unlink(fname.c_str()) != 0) {
       return IOError(fname, errno);
@@ -426,7 +431,7 @@ class PosixEnv : public Env {
   }
 
   virtual Status GetFileSize(const std::string& fname_, uint64_t* size) {
-	std::string fname = hlsm::reloacte_file(fname_);
+	std::string fname = hlsm::relocate_file(fname_);
     Status s;
     struct stat sbuf;
     if (stat(fname.c_str(), &sbuf) != 0) {
@@ -439,8 +444,8 @@ class PosixEnv : public Env {
   }
 
   virtual Status RenameFile(const std::string& src_, const std::string& target_) {
-	std::string src = hlsm::reloacte_file(src_);
-	std::string target = hlsm::reloacte_file(target_);
+	std::string src = hlsm::relocate_file(src_);
+	std::string target = hlsm::relocate_file(target_);
     Status result;
     if (rename(src.c_str(), target.c_str()) != 0) {
       result = IOError(src, errno);
@@ -449,7 +454,7 @@ class PosixEnv : public Env {
   }
 
   virtual Status LockFile(const std::string& fname_, FileLock** lock) {
-	std::string fname = hlsm::reloacte_file(fname_);
+	std::string fname = hlsm::relocate_file(fname_);
     *lock = NULL;
     Status result;
     int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
@@ -509,7 +514,7 @@ class PosixEnv : public Env {
   }
 
   virtual Status NewLogger(const std::string& fname_, Logger** result) {
-	std::string fname = hlsm::reloacte_file(fname_);
+	std::string fname = hlsm::relocate_file(fname_);
     FILE* f = fopen(fname.c_str(), "w");
     if (f == NULL) {
       *result = NULL;

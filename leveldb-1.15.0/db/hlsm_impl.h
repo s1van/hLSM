@@ -47,6 +47,7 @@ double calculate_compaction_score(int, std::vector<leveldb::FileMetaData*> *);
 } // cursor
 
 int delete_secondary_file(leveldb::Env* const, uint64_t);
+int prefetch_file(leveldb::RandomAccessFile*, uint64_t);
 
 } // hlsm
 
