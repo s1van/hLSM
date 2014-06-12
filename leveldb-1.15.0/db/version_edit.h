@@ -61,7 +61,7 @@ class VersionEdit {
   void AddFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
-               const InternalKey& largest) {
+               const InternalKey& largest, bool for_lazy_version = false) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
@@ -71,7 +71,7 @@ class VersionEdit {
   }
 
   // Delete the specified "file" from the specified "level".
-  void DeleteFile(int level, uint64_t file) {
+  void DeleteFile(int level, uint64_t file, bool for_lazy_version = false) {
     deleted_files_.insert(std::make_pair(level, file));
   }
 
@@ -82,6 +82,7 @@ class VersionEdit {
 
  protected:
   friend class VersionSet;
+  friend class BasicVersionSet;
 
   typedef std::set< std::pair<int, uint64_t> > DeletedFileSet;
 

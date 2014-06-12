@@ -144,7 +144,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
   const int table_cache_size = options_.max_open_files - kNumNonTableCacheFiles;
   table_cache_ = new TableCache(dbname_, &options_, table_cache_size);
 
-  versions_ = new VersionSet(dbname_, &options_, table_cache_,
+  versions_ = NewVersionSet(dbname_, &options_, table_cache_,
                              &internal_comparator_);
 }
 

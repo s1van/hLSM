@@ -119,6 +119,7 @@ class Version {
  private:
   friend class Compaction;
   friend class VersionSet;
+  friend class BasicVersionSet;
 
   class LevelFileNumIterator;
   Iterator* NewConcatenatingIterator(const ReadOptions&, int level, bool is_sequential=false) const;
@@ -168,21 +169,21 @@ class Version {
 class VersionSet {
  public:
   VersionSet(const std::string& dbname,
-             const Options* options,
-             TableCache* table_cache,
-             const InternalKeyComparator*);
-  ~VersionSet();
+		  const Options* options,
+	      TableCache* table_cache,
+	      const InternalKeyComparator*);
+  virtual ~VersionSet() {};
 
   // Apply *edit to the current version to form a new descriptor that
   // is both saved to persistent state and installed as the new
   // current version.  Will release *mu while actually writing to the file.
   // REQUIRES: *mu is held on entry.
   // REQUIRES: no other thread concurrently calls LogAndApply()
-  Status LogAndApply(VersionEdit* edit, port::Mutex* mu)
-      EXCLUSIVE_LOCKS_REQUIRED(mu);
+  virtual Status LogAndApply(VersionEdit* edit, port::Mutex* mu)
+      EXCLUSIVE_LOCKS_REQUIRED(mu) = 0;
 
   // Recover the last saved descriptor from persistent storage.
-  Status Recover();
+  virtual Status Recover() = 0;
 
   // Return the current version.
   Version* current() const { return current_; }
@@ -231,13 +232,13 @@ class VersionSet {
   // Returns NULL if there is no compaction to be done.
   // Otherwise returns a pointer to a heap-allocated object that
   // describes the compaction.  Caller should delete the result.
-  Compaction* PickCompaction();
+  virtual Compaction* PickCompaction();
 
   // Return a compaction object for compacting the range [begin,end] in
   // the specified level.  Returns NULL if there is nothing in that
   // level that overlaps the specified range.  Caller should delete
   // the result.
-  Compaction* CompactRange(
+  virtual Compaction* CompactRange(
       int level,
       const InternalKey* begin,
       const InternalKey* end);
@@ -258,7 +259,7 @@ class VersionSet {
 
   // Add all files listed in any live version to *live.
   // May also mutate some internal state.
-  void AddLiveFiles(std::set<uint64_t>* live);
+  virtual void AddLiveFiles(std::set<uint64_t>* live) = 0;
 
   // Return the approximate offset in the database of the data for
   // "key" as of version "v".
@@ -271,11 +272,10 @@ class VersionSet {
   };
   const char* LevelSummary(LevelSummaryStorage* scratch) const;
 
-  Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
+  virtual Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_) = 0;
 
- private:
+ protected:
   class Builder;
-
   friend class Compaction;
   friend class Version;
 
@@ -293,7 +293,7 @@ class VersionSet {
   void SetupOtherInputs(Compaction* c);
 
   // Save current contents to *log
-  Status WriteSnapshot(log::Writer* log);
+  virtual Status WriteSnapshot(log::Writer* log) = 0;
 
   void AppendVersion(Version* v);
 
@@ -321,6 +321,36 @@ class VersionSet {
   // No copying allowed
   VersionSet(const VersionSet&);
   void operator=(const VersionSet&);
+};
+
+class BasicVersionSet: public VersionSet {
+ public:
+  BasicVersionSet(const std::string& dbname,
+             const Options* options,
+             TableCache* table_cache,
+             const InternalKeyComparator*);
+  ~BasicVersionSet();
+
+  Status LogAndApply(VersionEdit* edit, port::Mutex* mu)
+      EXCLUSIVE_LOCKS_REQUIRED(mu);
+  Status Recover();
+
+  // Add all files listed in any live version to *live.
+  // May also mutate some internal state.
+  void AddLiveFiles(std::set<uint64_t>* live);
+
+  Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
+
+ private:
+  friend class Compaction;
+  friend class Version;
+
+  // Save current contents to *log
+  Status WriteSnapshot(log::Writer* log);
+
+  // No copying allowed
+  BasicVersionSet(const BasicVersionSet&);
+  void operator=(const BasicVersionSet&);
 };
 
 // A Compaction encapsulates information about a compaction.
@@ -395,6 +425,9 @@ class Compaction {
   // all L >= level_ + 2).
   size_t level_ptrs_[config::kNumLevels];
 };
+
+VersionSet *NewVersionSet(const std::string&, const Options*,
+		TableCache*, const InternalKeyComparator*);
 
 }  // namespace leveldb
 

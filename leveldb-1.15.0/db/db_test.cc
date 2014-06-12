@@ -2083,7 +2083,7 @@ void BM_LogAndApply(int iters, int num_base_files) {
 
   InternalKeyComparator cmp(BytewiseComparator());
   Options options;
-  VersionSet vset(dbname, &options, NULL, &cmp);
+  BasicVersionSet vset(dbname, &options, NULL, &cmp);
   ASSERT_OK(vset.Recover());
   VersionEdit &vbase = (*NewVersionEdit());
   uint64_t fnum = 1;

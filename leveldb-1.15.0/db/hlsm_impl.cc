@@ -45,7 +45,7 @@ int Version::PreloadMetadata(int max_level) {
 	return 0;
 }
 
-Status VersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
+Status BasicVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     assert(c->num_input_files(1) == 0);
     int level = c->level();
     leveldb::FileMetaData* const* files = &this->current()->files_[level][0];
@@ -76,6 +76,10 @@ VersionEdit* NewVersionEdit () {
 	return new BasicVersionEdit();
 }
 
+VersionSet *NewVersionSet(const std::string& dbname, const Options* options,
+        TableCache* table_cache, const InternalKeyComparator* cmp) {
+	return new BasicVersionSet(dbname, options, table_cache, cmp);
+}
 
 struct Table::Rep {
   Options options;
