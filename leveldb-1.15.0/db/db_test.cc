@@ -2085,7 +2085,7 @@ void BM_LogAndApply(int iters, int num_base_files) {
   Options options;
   VersionSet vset(dbname, &options, NULL, &cmp);
   ASSERT_OK(vset.Recover());
-  VersionEdit vbase;
+  VersionEdit &vbase = (*NewVersionEdit());
   uint64_t fnum = 1;
   for (int i = 0; i < num_base_files; i++) {
     InternalKey start(MakeKey(2*fnum), 1, kTypeValue);
@@ -2097,12 +2097,13 @@ void BM_LogAndApply(int iters, int num_base_files) {
   uint64_t start_micros = env->NowMicros();
 
   for (int i = 0; i < iters; i++) {
-    VersionEdit vedit;
+    VersionEdit &vedit = (*NewVersionEdit());
     vedit.DeleteFile(2, fnum);
     InternalKey start(MakeKey(2*fnum), 1, kTypeValue);
     InternalKey limit(MakeKey(2*fnum+1), 1, kTypeDeletion);
     vedit.AddFile(2, fnum++, 1 /* file size */, start, limit);
     vset.LogAndApply(&vedit, &mu);
+    delete &vedit;
   }
   uint64_t stop_micros = env->NowMicros();
   unsigned int us = stop_micros - start_micros;
@@ -2111,6 +2112,7 @@ void BM_LogAndApply(int iters, int num_base_files) {
   fprintf(stderr,
           "BM_LogAndApply/%-6s   %8d iters : %9u us (%7.0f us / iter)\n",
           buf, iters, us, ((float)us) / iters);
+  delete &vbase;
 }
 
 }  // namespace leveldb

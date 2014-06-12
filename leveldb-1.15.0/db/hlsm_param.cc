@@ -17,6 +17,7 @@ namespace hlsm {
 namespace config {
 DBMode mode("Default");
 int preload_metadata_max_level = 5;
+int kMinKBPerSeek = 16;
 
 char *primary_storage_path = NULL;
 char *secondary_storage_path = NULL;
@@ -43,6 +44,8 @@ bool seqential_read_from_primary = true;
 bool random_read_from_primary = true;
 bool meta_on_primary = true;
 bool log_on_primary = true;
+
+int kMinBytesPerSeek = 16384;
 
 TableLevel table_level;
 uint32_t FileNameHash::hash[] = {0};

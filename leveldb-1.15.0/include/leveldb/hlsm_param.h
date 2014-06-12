@@ -2,6 +2,7 @@
 #define HLSM_PARAM_H
 
 #include "leveldb/hlsm_types.h"
+#include "db/dbformat.h"
 /************************** Constants *****************************/
 #define BLKSIZE 4096
 
@@ -21,6 +22,7 @@ namespace hlsm {
 namespace config {
 extern DBMode mode;
 extern int preload_metadata_max_level;
+extern int kMinKBPerSeek;
 
 extern const char *primary_storage_path;	// primary path holds all the .ldb files
 extern const char *secondary_storage_path;
@@ -47,6 +49,9 @@ extern bool seqential_read_from_primary;
 extern bool random_read_from_primary;
 extern bool meta_on_primary;
 extern bool log_on_primary;
+
+extern int kMinBytesPerSeek;
+static const int kNumLazyLevels = 6 * leveldb::config::kNumLevels; // old, new, and 4 delta (ratio)
 
 extern TableLevel table_level;
 } // runtime

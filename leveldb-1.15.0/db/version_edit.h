@@ -27,10 +27,9 @@ struct FileMetaData {
 
 class VersionEdit {
  public:
-  VersionEdit() { Clear(); }
-  ~VersionEdit() { }
+   virtual ~VersionEdit() { }
 
-  void Clear();
+   virtual void Clear() = 0;
 
   void SetComparatorName(const Slice& name) {
     has_comparator_ = true;
@@ -76,12 +75,12 @@ class VersionEdit {
     deleted_files_.insert(std::make_pair(level, file));
   }
 
-  void EncodeTo(std::string* dst) const;
-  Status DecodeFrom(const Slice& src);
+  virtual void EncodeTo(std::string* dst) const = 0;
+  virtual Status DecodeFrom(const Slice& src) = 0;
 
-  std::string DebugString() const;
+  virtual std::string DebugString() const = 0;
 
- private:
+ protected:
   friend class VersionSet;
 
   typedef std::set< std::pair<int, uint64_t> > DeletedFileSet;
@@ -102,6 +101,16 @@ class VersionEdit {
   std::vector< std::pair<int, FileMetaData> > new_files_;
 };
 
+class BasicVersionEdit: public VersionEdit {
+public:
+	BasicVersionEdit();
+	void Clear();
+	void EncodeTo(std::string* dst) const;
+	Status DecodeFrom(const Slice& src);
+	std::string DebugString() const;
+};
+
+VersionEdit *NewVersionEdit();
 }  // namespace leveldb
 
 #endif  // STORAGE_LEVELDB_DB_VERSION_EDIT_H_

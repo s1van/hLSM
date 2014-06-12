@@ -23,7 +23,10 @@ enum Tag {
   kPrevLogNumber        = 9
 };
 
-void VersionEdit::Clear() {
+
+BasicVersionEdit::BasicVersionEdit() { Clear(); }
+
+void BasicVersionEdit::Clear() {
   comparator_.clear();
   log_number_ = 0;
   prev_log_number_ = 0;
@@ -38,7 +41,7 @@ void VersionEdit::Clear() {
   new_files_.clear();
 }
 
-void VersionEdit::EncodeTo(std::string* dst) const {
+void BasicVersionEdit::EncodeTo(std::string* dst) const {
   if (has_comparator_) {
     PutVarint32(dst, kComparator);
     PutLengthPrefixedSlice(dst, comparator_);
@@ -106,7 +109,7 @@ static bool GetLevel(Slice* input, int* level) {
   }
 }
 
-Status VersionEdit::DecodeFrom(const Slice& src) {
+Status BasicVersionEdit::DecodeFrom(const Slice& src) {
   Clear();
   Slice input = src;
   const char* msg = NULL;
@@ -209,7 +212,7 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
   return result;
 }
 
-std::string VersionEdit::DebugString() const {
+std::string BasicVersionEdit::DebugString() const {
   std::string r;
   r.append("VersionEdit {");
   if (has_comparator_) {

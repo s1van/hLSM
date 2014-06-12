@@ -72,6 +72,10 @@ Status VersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     return status;
 }
 
+VersionEdit* NewVersionEdit () {
+	return new BasicVersionEdit();
+}
+
 
 struct Table::Rep {
   Options options;
@@ -197,6 +201,8 @@ int init() {
 	if (use_opq_thread)
 		hlsm::init_opq_helpler();
 
+	runtime::kMinBytesPerSeek = config::kMinKBPerSeek * 1024;
+
 	return 0;
 }
 
@@ -211,24 +217,6 @@ int cleanup() {
 
 
 namespace cursor {
-static double MaxBytesForLevel(int level) {
-  // Note: the result for level zero is not really used since we set
-  // the level-0 compaction threshold based on number of files.
-  double result = leveldb::config::kL0_Size * 1048576.0;  // Result for both level-0 and level-1
-  while (level > 1) {
-    result *= leveldb::config::kLevelRatio;
-    level = level - 2; // LX.L and LX.R have the same maximum size
-  }
-  return result;
-}
-
-static int64_t TotalFileSize(const std::vector<leveldb::FileMetaData*>& files) {
-  int64_t sum = 0;
-  for (size_t i = 0; i < files.size(); i++) {
-    sum += files[i]->file_size;
-  }
-  return sum;
-}
 
 double calculate_compaction_score(int level, std::vector<leveldb::FileMetaData*> files[]) {
 	assert(level > 0);

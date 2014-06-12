@@ -108,13 +108,15 @@ bool DumpLog(Env* env, const std::string& fname) {
 // Called on every log record (each one of which is a WriteBatch)
 // found in a kDescriptorFile.
 static void VersionEditPrinter(Slice record) {
-  VersionEdit edit;
+  VersionEdit &edit = (*NewVersionEdit());
   Status s = edit.DecodeFrom(record);
   if (!s.ok()) {
     printf("%s\n", s.ToString().c_str());
+    delete edit;
     return;
   }
   printf("%s", edit.DebugString().c_str());
+  delete &edit;
 }
 
 bool DumpDescriptor(Env* env, const std::string& fname) {

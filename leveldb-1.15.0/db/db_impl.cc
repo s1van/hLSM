@@ -186,7 +186,7 @@ DBImpl::~DBImpl() {
 }
 
 Status DBImpl::NewDB() {
-  VersionEdit new_db;
+  VersionEdit &new_db = (*NewVersionEdit());
   new_db.SetComparatorName(user_comparator()->Name());
   new_db.SetLogNumber(0);
   new_db.SetNextFile(2);
@@ -208,6 +208,7 @@ Status DBImpl::NewDB() {
     }
   }
   delete file;
+  delete &new_db;
   if (s.ok()) {
     // Make "CURRENT" file that points to the new manifest file.
     s = SetCurrentFile(env_, dbname_, 1);
@@ -520,7 +521,7 @@ void DBImpl::CompactMemTable() {
   assert(imm_ != NULL);
 
   // Save the contents of the memtable as a new Table
-  VersionEdit edit;
+  VersionEdit &edit = (*NewVersionEdit());
   Version* base = versions_->current();
   base->Ref();
   Status s = WriteLevel0Table(imm_, &edit, base);
@@ -546,6 +547,7 @@ void DBImpl::CompactMemTable() {
   } else {
     RecordBackgroundError(s);
   }
+  delete &edit;
 }
 
 void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
@@ -1494,7 +1496,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
 
   DBImpl* impl = new DBImpl(options, dbname);
   impl->mutex_.Lock();
-  VersionEdit edit;
+  VersionEdit &edit = (*NewVersionEdit());
   Status s = impl->Recover(&edit); // Handles create_if_missing, error_if_exists
   if (s.ok()) {
     uint64_t new_log_number = impl->versions_->NewFileNumber();
@@ -1523,6 +1525,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
   } else {
     delete impl;
   }
+  delete &edit;
   return s;
 }
 

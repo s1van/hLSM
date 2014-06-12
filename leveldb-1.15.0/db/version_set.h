@@ -374,7 +374,7 @@ class Compaction {
   int level_;
   uint64_t max_output_file_size_;
   Version* input_version_;
-  VersionEdit edit_;
+  BasicVersionEdit edit_;
 
   // Each compaction reads inputs from "level_" and "level_+1"
   std::vector<FileMetaData*> inputs_[2];      // The two sets of inputs
