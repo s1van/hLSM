@@ -229,7 +229,7 @@ public:
 		return (mode == PartialbLSM);
 	}
 
-	bool ishLSM() {
+	inline bool ishLSM() {
 		return (mode == hLSM);
 	}
 

@@ -7,8 +7,7 @@
 #include "db/version_set.h"
 #include "util/coding.h"
 
-using namespace leveldb;
-namespace hlsm {
+namespace leveldb {
 
 // Tag numbers for serialized VersionEdit.  These numbers are written to
 // disk and should not be changed.

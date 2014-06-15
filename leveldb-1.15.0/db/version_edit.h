@@ -13,6 +13,8 @@
 namespace leveldb {
 
 class VersionSet;
+class BasicVersionSet;
+class LazyVersionSet;
 
 struct FileMetaData {
   int refs;
@@ -58,7 +60,7 @@ class VersionEdit {
   // Add the specified file at the specified number.
   // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
   // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
-  void AddFile(int level, uint64_t file,
+  virtual void AddFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
                const InternalKey& largest, bool for_lazy_version = false) {
@@ -71,7 +73,7 @@ class VersionEdit {
   }
 
   // Delete the specified "file" from the specified "level".
-  void DeleteFile(int level, uint64_t file, bool for_lazy_version = false) {
+  virtual void DeleteFile(int level, uint64_t file, bool for_lazy_version = false) {
     deleted_files_.insert(std::make_pair(level, file));
   }
 
@@ -80,8 +82,9 @@ class VersionEdit {
 
   virtual std::string DebugString() const = 0;
 
- protected:
+protected:
   friend class VersionSet;
+  friend class LazyVersionSet;
   friend class BasicVersionSet;
 
   typedef std::set< std::pair<int, uint64_t> > DeletedFileSet;

@@ -58,6 +58,8 @@ extern bool SomeFileOverlapsRange(
 
 class Version {
  public:
+  Version() {} // for the sake of compiler only
+
   // Append to *iters a sequence of iterators that will
   // yield the contents of this Version when merged together.
   // REQUIRES: This version has been saved (see VersionSet::SaveTo)
@@ -120,6 +122,7 @@ class Version {
   friend class Compaction;
   friend class VersionSet;
   friend class BasicVersionSet;
+  friend class LazyVersionSet;
 
   class LevelFileNumIterator;
   Iterator* NewConcatenatingIterator(const ReadOptions&, int level, bool is_sequential=false) const;
@@ -274,7 +277,7 @@ class VersionSet {
 
   virtual Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_) = 0;
 
- protected:
+protected:
   class Builder;
   friend class Compaction;
   friend class Version;
@@ -338,7 +341,6 @@ class BasicVersionSet: public VersionSet {
   // Add all files listed in any live version to *live.
   // May also mutate some internal state.
   void AddLiveFiles(std::set<uint64_t>* live);
-
   Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
  private:

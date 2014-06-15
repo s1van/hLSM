@@ -8,8 +8,7 @@
 #include "db/version_edit.h"
 #include "leveldb/hlsm.h"
 
-using namespace leveldb;
-namespace hlsm {
+namespace leveldb {
 
 class VersionSet;
 
@@ -51,6 +50,7 @@ class LazyVersionEdit: leveldb::VersionEdit {
 
  private:
   friend class VersionSet;
+  friend class LazyVersionSet;
 
   typedef std::set< std::pair<int, uint64_t> > DeletedFileSet;
 

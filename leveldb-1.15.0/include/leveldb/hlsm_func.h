@@ -74,6 +74,7 @@ inline double MaxBytesForLevel(int level) {
   }
   return result;
 }
+
 /*
  *  Within hlsm_util.cc
  */
