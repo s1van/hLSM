@@ -87,6 +87,7 @@ Version::~Version() {
       }
     }
   }
+  delete[] files_;
 }
 
 int FindFile(const InternalKeyComparator& icmp,
@@ -1164,7 +1165,7 @@ uint64_t VersionSet::ApproximateOffsetOf(Version* v, const InternalKey& ikey) {
   return result;
 }
 
-void BasicVersionSet::AddLiveFiles(std::set<uint64_t>* live) {
+void VersionSet::AddLiveFiles(std::set<uint64_t>* live) {
   for (Version* v = dummy_versions_.next_;
        v != &dummy_versions_;
        v = v->next_) {
@@ -1437,7 +1438,8 @@ Compaction::Compaction(int level)
       input_version_(NULL),
       grandparent_index_(0),
       seen_key_(false),
-      overlapped_bytes_(0) {
+      overlapped_bytes_(0),
+      edit_ ((*NewVersionEdit())){
   for (int i = 0; i < config::kNumLevels; i++) {
     level_ptrs_[i] = 0;
   }
@@ -1447,6 +1449,7 @@ Compaction::~Compaction() {
   if (input_version_ != NULL) {
     input_version_->Unref();
   }
+  delete &edit_;
 }
 
 bool Compaction::IsTrivialMove() const {

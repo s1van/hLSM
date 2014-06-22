@@ -9,6 +9,7 @@
 #include "db/hlsm_impl.h"
 #include "db/log_reader.h"
 #include "db/log_writer.h"
+#include "leveldb/hlsm.h"
 
 namespace leveldb {
 
@@ -110,12 +111,14 @@ class LazyVersionSet::Builder {
     }
 
     const LazyVersionEdit::DeletedFileSet& ldel = edit->deleted_files_lazy_;
-    for (LazyVersionEdit::DeletedFileSet::const_iterator iter = ldel.begin();
-    	  iter != ldel.end();
-    	  ++iter) {
-      const int level = iter->first;
-      const uint64_t number = iter->second;
-      lazy_levels_[level].deleted_files.insert(number);
+    if (ldel.size() > 0) {
+    	for (LazyVersionEdit::DeletedFileSet::const_iterator iter = ldel.begin();
+    			iter != ldel.end();
+    			++iter) {
+    		const int level = iter->first;
+    		const uint64_t number = iter->second;
+    		lazy_levels_[level].deleted_files.insert(number);
+    	}
     }
 
     // Add new files
@@ -152,8 +155,8 @@ class LazyVersionSet::Builder {
       f->allowed_seeks = (f->file_size / hlsm::runtime::kMinBytesPerSeek);
       if (f->allowed_seeks < 100) f->allowed_seeks = 100;
 
-      levels_[level].deleted_files.erase(f->number);
-      levels_[level].added_files->insert(f);
+      lazy_levels_[level].deleted_files.erase(f->number);
+      lazy_levels_[level].added_files->insert(f);
     }
   }
 
@@ -179,7 +182,7 @@ class LazyVersionSet::Builder {
     for (int level = 0; level < kLevel; level++) {
       // Merge the set of added files with the set of pre-existing files.
       // Drop any deleted files.  Store the result in *v.
-      const std::vector<FileMetaData*>& base_files = base_->files_[level];
+      const std::vector<FileMetaData*>& base_files = base->files_[level];
       std::vector<FileMetaData*>::const_iterator base_iter = base_files.begin();
       std::vector<FileMetaData*>::const_iterator base_end = base_files.end();
       const FileSet* added = levels[level].added_files;
@@ -200,7 +203,7 @@ class LazyVersionSet::Builder {
 
       // Add remaining base files
       for (; base_iter != base_end; ++base_iter) {
-        MaybeAddFile(v, levels, level, *base_iter);
+    	MaybeAddFile(v, levels, level, *base_iter);
       }
 
 #ifndef NDEBUG
@@ -232,8 +235,10 @@ LazyVersionSet::LazyVersionSet(const std::string& dbname,
                        const Options* options,
                        TableCache* table_cache,
                        const InternalKeyComparator* cmp)
-    :VersionSet(dbname, options, table_cache, cmp) {
-  AppendVersion(new Version(this), new Version(this) );
+    :VersionSet(dbname, options, table_cache, cmp),
+     dummy_lazy_versions_(this, hlsm::runtime::kNumLazyLevels),
+     current_lazy_(NULL) {
+  AppendVersion(new Version(this), new Version(this, hlsm::runtime::kNumLazyLevels) );
 }
 
 LazyVersionSet::~LazyVersionSet() {
@@ -293,7 +298,7 @@ Status LazyVersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
   edit->SetLastSequence(last_sequence_);
 
   Version* v = new Version(this);
-  Version* lv = new Version(this);
+  Version* lv = new Version(this, hlsm::runtime::kNumLazyLevels);
   {
 	Builder builder(this, current_, current_lazy_);
     builder.Apply(reinterpret_cast<LazyVersionEdit*>(edit) );
@@ -384,7 +389,7 @@ Status LazyVersionSet::WriteSnapshot(log::Writer* log) {
     const std::vector<FileMetaData*>& files = current_->files_[level];
     for (size_t i = 0; i < files.size(); i++) {
       const FileMetaData* f = files[i];
-      edit.AddFile(level, f->number, f->file_size, f->smallest, f->largest, false);
+      edit.AddFile(level, f->number, f->file_size, f->smallest, f->largest);
     }
   }
 
@@ -392,7 +397,7 @@ Status LazyVersionSet::WriteSnapshot(log::Writer* log) {
     const std::vector<FileMetaData*>& files = current_lazy_->files_[level];
     for (size_t i = 0; i < files.size(); i++) {
       const FileMetaData* f = files[i];
-      edit.AddFile(level, f->number, f->file_size, f->smallest, f->largest, true);
+      edit.AddLazyFile(level, f->number, f->file_size, f->smallest, f->largest);
     }
   }
 
@@ -503,7 +508,7 @@ Status LazyVersionSet::Recover() {
 
   if (s.ok()) {
     Version* v = new Version(this);
-    Version* lv = new Version(this);
+    Version* lv = new Version(this, hlsm::runtime::kNumLazyLevels);
     builder.SaveTo(v, lv);
     // Install recovered version
     Finalize(v);
@@ -518,12 +523,11 @@ Status LazyVersionSet::Recover() {
   return s;
 }
 
-void LazyVersionSet::AddLiveFiles(std::set<uint64_t>* live) {
-//ToDo: add lazy files
-  for (Version* v = dummy_versions_.next_;
-       v != &dummy_versions_;
+void LazyVersionSet::AddLiveLazyFiles(std::set<uint64_t>* live) {
+  for (Version* v = dummy_lazy_versions_.next_;
+       v != &dummy_lazy_versions_;
        v = v->next_) {
-    for (int level = 0; level < leveldb::config::kNumLevels; level++) {
+    for (int level = 0; level < hlsm::runtime::kNumLazyLevels; level++) {
       const std::vector<FileMetaData*>& files = v->files_[level];
       for (size_t i = 0; i < files.size(); i++) {
         live->insert(files[i]->number);
@@ -560,4 +564,4 @@ Status LazyVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     return status;
 }
 
-} // namespace hlsm
+} // namespace leveldb

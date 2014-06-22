@@ -19,7 +19,7 @@ public:
 		EXCLUSIVE_LOCKS_REQUIRED(mu);
 
 	Status Recover();
-	void AddLiveFiles(std::set<uint64_t>* live);
+	void AddLiveLazyFiles(std::set<uint64_t>* live);
 	Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
 private:
@@ -40,7 +40,7 @@ private:
  void operator=(const LazyVersionSet&);
 };
 
-} // hlsm
+} // namespace leveldb
 
 
 #endif

@@ -209,23 +209,23 @@ public:
 		set(std::string(m));
 	}
 
-	bool isDefault() {
+	inline bool isDefault() {
 		return (mode == Default);
 	}
 
-	bool isFullMirror() {
+	inline bool isFullMirror() {
 		return (mode == FullMirror);
 	}
 
-	bool isPartialMirror() {
+	inline bool isPartialMirror() {
 		return (mode == PartialMirror);
 	}
 
-	bool isbLSM() {
+	inline bool isbLSM() {
 		return (mode == bLSM);
 	}
 
-	bool isPartialbLSM() {
+	inline bool isPartialbLSM() {
 		return (mode == PartialbLSM);
 	}
 

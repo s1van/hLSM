@@ -142,7 +142,7 @@ class Version {
   int refs_;                    // Number of live refs to this version
 
   // List of files per level
-  std::vector<FileMetaData*> files_[config::kNumLevels];
+  std::vector<FileMetaData*> *files_;
 
   // Next file to compact based on seek stats.
   FileMetaData* file_to_compact_;
@@ -154,12 +154,13 @@ class Version {
   double compaction_score_;
   int compaction_level_;
 
-  explicit Version(VersionSet* vset)
+  explicit Version(VersionSet* vset, int level = config::kNumLevels)
       : vset_(vset), next_(this), prev_(this), refs_(0),
         file_to_compact_(NULL),
         file_to_compact_level_(-1),
         compaction_score_(-1),
         compaction_level_(-1) {
+	  files_ = new std::vector<FileMetaData*>[level];
   }
 
   ~Version();
@@ -262,7 +263,7 @@ class VersionSet {
 
   // Add all files listed in any live version to *live.
   // May also mutate some internal state.
-  virtual void AddLiveFiles(std::set<uint64_t>* live) = 0;
+  virtual void AddLiveFiles(std::set<uint64_t>* live);
 
   // Return the approximate offset in the database of the data for
   // "key" as of version "v".
@@ -337,10 +338,6 @@ class BasicVersionSet: public VersionSet {
   Status LogAndApply(VersionEdit* edit, port::Mutex* mu)
       EXCLUSIVE_LOCKS_REQUIRED(mu);
   Status Recover();
-
-  // Add all files listed in any live version to *live.
-  // May also mutate some internal state.
-  void AddLiveFiles(std::set<uint64_t>* live);
   Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
  private:
@@ -406,7 +403,7 @@ class Compaction {
   int level_;
   uint64_t max_output_file_size_;
   Version* input_version_;
-  BasicVersionEdit edit_;
+  VersionEdit &edit_;
 
   // Each compaction reads inputs from "level_" and "level_+1"
   std::vector<FileMetaData*> inputs_[2];      // The two sets of inputs

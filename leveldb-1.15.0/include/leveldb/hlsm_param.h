@@ -3,6 +3,8 @@
 
 #include "leveldb/hlsm_types.h"
 #include "db/dbformat.h"
+#include <set>
+
 /************************** Constants *****************************/
 #define BLKSIZE 4096
 
@@ -54,6 +56,7 @@ extern int kMinBytesPerSeek;
 static const int kNumLazyLevels = 6 * leveldb::config::kNumLevels; // old, new, and 4 delta (ratio)
 
 extern TableLevel table_level;
+extern std::set<uint64_t> moving_tables_; // tables move from primary to secondary during 2-phase compaction in hlsm-tree
 } // runtime
 
 } // hlsm

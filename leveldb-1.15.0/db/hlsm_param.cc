@@ -1,6 +1,7 @@
 #include "leveldb/hlsm_types.h"
 #include <pthread.h>
 #include <stdio.h>
+#include <set>
 
 namespace leveldb {
 
@@ -49,6 +50,8 @@ int kMinBytesPerSeek = 16384;
 
 TableLevel table_level;
 uint32_t FileNameHash::hash[] = {0};
+std::set<uint64_t> moving_tables_;
+
 } // runtime
 
 } // hlsm

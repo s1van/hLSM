@@ -78,11 +78,11 @@ class Slice {
             (memcmp(data_, x.data_, x.size_) == 0));
   }
 
-	Slice *clone() const{
-		char* d_ = (char *)malloc(size_);
-		memcpy(d_, data_, size_);
-		return new Slice(d_, size_);
-	}
+  Slice *clone() const{
+    char* d_ = (char *)malloc(size_);
+    memcpy(d_, data_, size_);
+    return new Slice(d_, size_);
+  }
 
  private:
   const char* data_;

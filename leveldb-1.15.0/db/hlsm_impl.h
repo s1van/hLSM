@@ -11,6 +11,7 @@
 #include "port/port.h"
 #include "port/thread_annotations.h"
 #include "leveldb/env.h"
+#include "leveldb/hlsm.h"
 
 namespace hlsm {
 namespace runtime {
@@ -49,7 +50,29 @@ double calculate_compaction_score(int, std::vector<leveldb::FileMetaData*> *);
 int delete_secondary_file(leveldb::Env* const, uint64_t);
 int prefetch_file(leveldb::RandomAccessFile*, uint64_t);
 
-} // hlsm
+} // namespace hlsm
+
+namespace leveldb {
+
+/*
+ * Interface to Version, VersionEdit, and VersionSet
+ */
+
+inline int move_file_down(FileMetaData* f, VersionEdit* edit, int level) {
+	DEBUG_INFO(2, "number: %lu\tlevel: %d\n", f->number, level);
+	edit->DeleteFile(level, f->number);
+	edit->AddFile(level + 1, f->number, f->file_size,
+			f->smallest, f->largest);
+	hlsm::runtime::table_level.add(f->number, level+1);
+	if (level + 1 == hlsm::runtime::mirror_start_level) { // need to copy the content to secondary
+		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
+				new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+	}
+
+	return 0;
+}
+
+}
 
 
 #endif

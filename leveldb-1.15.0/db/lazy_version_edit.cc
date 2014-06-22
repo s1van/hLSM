@@ -122,7 +122,18 @@ static bool GetInternalKey(Slice* input, InternalKey* dst) {
 static bool GetLevel(Slice* input, int* level) {
   uint32_t v;
   if (GetVarint32(input, &v) &&
-      v < leveldb::config::kNumLevels) {
+      v < config::kNumLevels) {
+    *level = v;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+static bool GetLazyLevel(Slice* input, int* level) {
+  uint32_t v;
+  if (GetVarint32(input, &v) &&
+      v < hlsm::runtime::kNumLazyLevels) {
     *level = v;
     return true;
   } else {
@@ -205,7 +216,7 @@ Status LazyVersionEdit::DecodeFrom(const Slice& src) {
         break;
 
       case kDeletedLazyFile:
-        if (GetLevel(&input, &level) &&
+        if (GetLazyLevel(&input, &level) &&
             GetVarint64(&input, &number)) {
           deleted_files_lazy_.insert(std::make_pair(level, number));
         } else {
@@ -226,7 +237,7 @@ Status LazyVersionEdit::DecodeFrom(const Slice& src) {
         break;
 
       case kNewLazyFile:
-        if (GetLevel(&input, &level) &&
+        if (GetLazyLevel(&input, &level) &&
             GetVarint64(&input, &f.number) &&
             GetVarint64(&input, &f.file_size) &&
             GetInternalKey(&input, &f.smallest) &&
@@ -256,7 +267,7 @@ Status LazyVersionEdit::DecodeFrom(const Slice& src) {
 
 std::string LazyVersionEdit::DebugString() const {
   std::string r;
-  r.append("VersionEdit {");
+  r.append("LazyVersionEdit {");
   if (has_comparator_) {
     r.append("\n  Comparator: ");
     r.append(comparator_);

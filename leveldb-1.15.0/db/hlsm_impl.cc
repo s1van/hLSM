@@ -10,11 +10,13 @@
 #include "table/format.h"
 
 #include "db/version_set.h"
+#include "db/lazy_version_set.h"
 #include "db/version_edit.h"
+#include "db/lazy_version_edit.h"
 
-#include "table_cache.h"
-#include "db_impl.h"
-#include "filename.h"
+#include "db/table_cache.h"
+#include "db/db_impl.h"
+#include "db/filename.h"
 
 
 
@@ -73,11 +75,15 @@ Status BasicVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
 }
 
 VersionEdit* NewVersionEdit () {
+	if (hlsm::config::mode.ishLSM() )
+		return new LazyVersionEdit();
 	return new BasicVersionEdit();
 }
 
 VersionSet *NewVersionSet(const std::string& dbname, const Options* options,
         TableCache* table_cache, const InternalKeyComparator* cmp) {
+	if (hlsm::config::mode.ishLSM() )
+		return new LazyVersionSet(dbname, options, table_cache, cmp);
 	return new BasicVersionSet(dbname, options, table_cache, cmp);
 }
 
@@ -140,6 +146,98 @@ int Table::SetFileDescriptor(int is_sequential) {
 	return 0;
 }
 
+/*
+ * Tailor DMImpl functions for hLSM-tree
+ */
+
+void DBImpl::DeleteObsoleteFiles() {
+  if (hlsm::config::mode.ishLSM())
+	  DBImpl::HLSMDeleteObsoleteFiles();
+  else
+	  DBImpl::BasicDeleteObsoleteFiles();
+}
+
+void DBImpl::HLSMDeleteObsoleteFiles() {
+  if (!bg_error_.ok()) {
+    // After a background error, we don't know whether a new version may
+    // or may not have been committed, so we cannot safely garbage collect.
+    return;
+  }
+
+  // Make a set of all of the live files
+  std::set<uint64_t> live = pending_outputs_;
+  versions_->AddLiveFiles(&live);
+
+  std::set<uint64_t> lazy_live = hlsm::runtime::moving_tables_;
+  (reinterpret_cast<LazyVersionSet*>(versions_))->AddLiveLazyFiles(&lazy_live);
+
+  std::vector<std::string> filenames;
+  env_->GetChildren(dbname_, &filenames); // Ignoring errors on purpose
+  uint64_t number;
+  FileType type;
+  for (size_t i = 0; i < filenames.size(); i++) {
+    if (ParseFileName(filenames[i], &number, &type)) {
+      bool keep = true;
+      switch (type) {
+        case kLogFile:
+          keep = ((number >= versions_->LogNumber()) ||
+                  (number == versions_->PrevLogNumber()));
+          break;
+        case kDescriptorFile:
+          // Keep my manifest file, and any newer incarnations'
+          // (in case there is a race that allows other incarnations)
+          keep = (number >= versions_->ManifestFileNumber());
+          break;
+        case kTableFile:
+          keep = (live.find(number) != live.end());
+          break;
+        case kTempFile:
+          // Any temp files that are currently being written to must
+          // be recorded in pending_outputs_, which is inserted into "live"
+          keep = (live.find(number) != live.end());
+          break;
+        case kCurrentFile:
+        case kDBLockFile:
+        case kInfoLogFile:
+          keep = true;
+          break;
+      }
+
+      if (!keep) {
+        if (type == kTableFile && lazy_live.find(number) == lazy_live.end()) {
+          table_cache_->Evict(number);
+        }
+        Log(options_.info_log, "Delete type=%d #%lld\n",
+            int(type),
+            static_cast<unsigned long long>(number));
+        env_->DeleteFile(dbname_ + "/" + filenames[i]);
+      }
+    }
+  }
+
+  env_->GetChildren(std::string(hlsm::config::secondary_storage_path), &filenames); // Ignoring errors on purpose
+  for (size_t i = 0; i < filenames.size(); i++) {
+    if (ParseFileName(filenames[i], &number, &type)) {
+      bool keep = true;
+      switch (type) {
+        case kTableFile:
+          keep = (lazy_live.find(number) != lazy_live.end());
+          break;
+      }
+
+      if (!keep) {
+        if (type == kTableFile && live.find(number) == live.end()) {
+          table_cache_->Evict(number);
+        }
+        Log(options_.info_log, "Delete on Secondary type=%d #%lld\n",
+            int(type),
+            static_cast<unsigned long long>(number));
+        env_->DeleteFile(std::string(hlsm::config::secondary_storage_path) + "/" + filenames[i]);
+      }
+    }
+  }
+}
+
 } // leveldb
 
 namespace hlsm{
@@ -196,7 +294,7 @@ int init() {
 		mirror_start_level = 6; // logical level
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
-		random_read_from_primary = false;
+		random_read_from_primary = true;
 		meta_on_primary = false;
 		log_on_primary = false;
 		use_opq_thread = true;

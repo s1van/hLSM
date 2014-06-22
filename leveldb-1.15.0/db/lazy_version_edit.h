@@ -12,35 +12,27 @@ namespace leveldb {
 
 class VersionSet;
 
-class LazyVersionEdit: leveldb::VersionEdit {
+class LazyVersionEdit: public leveldb::VersionEdit {
  public:
 	LazyVersionEdit();
     void Clear();
 
-  // Add the specified file at the specified number.
-  // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
-  // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
-  void AddFile(int level, uint64_t file,
+  void AddLazyFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
-               const InternalKey& largest, bool for_lazy_version = false) {
+               const InternalKey& largest) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
     f.smallest = smallest;
     f.largest = largest;
-    if (for_lazy_version)
-    	new_files_lazy_.push_back(std::make_pair(level, f));
-    else
-    	new_files_.push_back(std::make_pair(level, f));
+    new_files_lazy_.push_back(std::make_pair(level, f));
+    DEBUG_INFO(2,"size: %lu fnum: %lu\tlevel: %d\tfp: %p\n", file_size, file, level, &f);
   }
 
   // Delete the specified "file" from the specified "level".
-  void DeleteFile(int level, uint64_t file, bool for_lazy_version = false) {
-	if (for_lazy_version)
-		deleted_files_lazy_.insert(std::make_pair(level, file));
-	else
-		deleted_files_.insert(std::make_pair(level, file));
+  void DeleteLazyFile(int level, uint64_t file) {
+	deleted_files_lazy_.insert(std::make_pair(level, file));
   }
 
   void EncodeTo(std::string* dst) const;
