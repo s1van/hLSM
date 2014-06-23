@@ -564,4 +564,57 @@ Status LazyVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     return status;
 }
 
+Compaction* LazyVersionSet::PickCompaction() {
+  Compaction* c;
+  int level;
+
+  // We prefer compactions triggered by too much data in a level over
+  // the compactions triggered by seeks.
+  const bool size_compaction = (current_->compaction_score_ >= 1);
+  const bool seek_compaction = (current_->file_to_compact_ != NULL);
+  if (size_compaction) {
+    level = current_->compaction_level_;
+    assert(level >= 0);
+    assert(level+1 < config::kNumLevels);
+    c = new Compaction(level);
+
+    // Pick the first file that comes after compact_pointer_[level]
+    for (size_t i = 0; i < current_->files_[level].size(); i++) {
+      FileMetaData* f = current_->files_[level][i];
+      if (compact_pointer_[level].empty() ||
+          icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
+        c->inputs_[0].push_back(f);
+        break;
+      }
+    }
+    if (c->inputs_[0].empty()) {
+      // Wrap-around to the beginning of the key space
+      c->inputs_[0].push_back(current_->files_[level][0]);
+    }
+  } else if (seek_compaction) {
+    level = current_->file_to_compact_level_;
+    c = new Compaction(level);
+    c->inputs_[0].push_back(current_->file_to_compact_);
+  } else {
+    return NULL;
+  }
+
+  c->input_version_ = current_;
+  c->input_version_->Ref();
+
+  // Pick up all files for level 0
+  if (level == 0) {
+	c->inputs_[0].clear();
+	for (size_t i = 0; i < current_->files_[level].size(); i++) {
+		FileMetaData* f = current_->files_[level][i];
+		c->inputs_[0].push_back(f);
+	}
+    assert(!c->inputs_[0].empty());
+  }
+
+  SetupOtherInputs(c);
+
+  return c;
+}
+
 } // namespace leveldb

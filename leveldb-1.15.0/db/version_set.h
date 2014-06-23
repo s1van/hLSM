@@ -397,6 +397,7 @@ class Compaction {
  private:
   friend class Version;
   friend class VersionSet;
+  friend class LazyVersionSet;
 
   explicit Compaction(int level);
 

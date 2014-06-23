@@ -43,7 +43,32 @@ int preload_metadata(leveldb::VersionSet*);
 
 namespace cursor {
 
-double calculate_compaction_score(int, std::vector<leveldb::FileMetaData*> *);
+inline double calculate_compaction_score(int level, std::vector<leveldb::FileMetaData*> files[]) {
+	assert(level > 0);
+	double score = 0;
+	if (level % 2 == 0) { // LX.L << LX.R > L(X+1).R
+		score = std::max( TotalFileSize(files[level]) / MaxBytesForLevel(level)	// LX.L
+			,TotalFileSize(files[level-1]) / MaxBytesForLevel(level-1));		// LX.R
+	} else { // LX.R < L(X-1).L >> LX.L
+		if (TotalFileSize(files[level+1]) == 0) // LX.L
+			score = TotalFileSize(files[level])/ MaxBytesForLevel(level);	// LX.R
+		else
+			score = 0; // this guarantees that LX.R won't be compacted since the score of LX.L is larger than 0
+	}
+	DEBUG_INFO(2, "level %d: score = %.4f, size = %ld, max_size = %.4f\n", level, score,
+			TotalFileSize(files[level]), MaxBytesForLevel(level));
+	return score;
+}
+
+inline double calculate_level0_compaction_score(size_t level0_size) {
+	double score = 0;
+	if (!hlsm::config::mode.ishLSM() || level0_size >= leveldb::config::kL0_CompactionTrigger)
+		score = level0_size/static_cast<double>(leveldb::config::kL0_CompactionTrigger);
+
+	DEBUG_INFO(2, "size: %lu\tscore: %.3f\n", level0_size, score);
+	return score;
+}
+
 
 } // cursor
 

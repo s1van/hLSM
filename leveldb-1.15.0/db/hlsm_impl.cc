@@ -319,28 +319,6 @@ int cleanup() {
 } // runtime
 
 
-namespace cursor {
-
-double calculate_compaction_score(int level, std::vector<leveldb::FileMetaData*> files[]) {
-	assert(level > 0);
-	double score = 0;
-	if (level % 2 == 0) { // LX.L << LX.R > L(X+1).R
-		score = std::max( TotalFileSize(files[level]) / MaxBytesForLevel(level)	// LX.L
-			,TotalFileSize(files[level-1]) / MaxBytesForLevel(level-1));		// LX.R
-	} else { // LX.R < L(X-1).L >> LX.L
-		if (TotalFileSize(files[level+1]) == 0) // LX.L
-			score = TotalFileSize(files[level])/ MaxBytesForLevel(level);	// LX.R
-		else
-			score = 0; // this guarantees that LX.R won't be compacted since the score of LX.L is larger than 0
-	}
-	DEBUG_INFO(2, "level %d: score = %.4f, size = %ld, max_size = %.4f\n", level, score,
-			TotalFileSize(files[level]), MaxBytesForLevel(level));
-	return score;
-}
-
-} // cursor
-
-
 int TableLevel::get(uint64_t key){
 	if (mapping_.find(key) == mapping_.end())
 		return -1;
