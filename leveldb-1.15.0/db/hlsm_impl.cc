@@ -226,13 +226,14 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
       }
 
       if (!keep) {
-        if (type == kTableFile && live.find(number) == live.end()) {
+        if (type == kTableFile && live.find(number) == live.end()) { // also no mirrored
           table_cache_->Evict(number);
+
+          Log(options_.info_log, "Delete on Secondary type=%d #%lld\n",
+        		  int(type),
+        		  static_cast<unsigned long long>(number));
+          env_->DeleteFile(std::string(hlsm::config::secondary_storage_path) + "/" + filenames[i]);
         }
-        Log(options_.info_log, "Delete on Secondary type=%d #%lld\n",
-            int(type),
-            static_cast<unsigned long long>(number));
-        env_->DeleteFile(std::string(hlsm::config::secondary_storage_path) + "/" + filenames[i]);
       }
     }
   }
@@ -291,7 +292,7 @@ int init() {
 
 	} else if (hlsm::config::mode.ishLSM()) {
 		full_mirror = false;
-		mirror_start_level = 6; // logical level
+		mirror_start_level = 3; // logical level
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
 		random_read_from_primary = true;

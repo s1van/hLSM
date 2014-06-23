@@ -961,7 +961,7 @@ Status BasicVersionSet::Recover() {
     Slice record;
     std::string scratch;
     while (reader.ReadRecord(&record, &scratch) && s.ok()) {
-      VersionEdit &edit = (*NewVersionEdit());
+      BasicVersionEdit edit;
       s = edit.DecodeFrom(record);
       if (s.ok()) {
         if (edit.has_comparator_ &&
@@ -995,7 +995,6 @@ Status BasicVersionSet::Recover() {
         last_sequence = edit.last_sequence_;
         have_last_sequence = true;
       }
-      delete &edit;
     }
   }
   delete file;
@@ -1085,7 +1084,7 @@ Status BasicVersionSet::WriteSnapshot(log::Writer* log) {
   // TODO: Break up into multiple records to reduce memory usage on recovery?
 
   // Save metadata
-  VersionEdit &edit = (*NewVersionEdit());
+  BasicVersionEdit edit;
   edit.SetComparatorName(icmp_.user_comparator()->Name());
 
   // Save compaction pointers
@@ -1108,7 +1107,6 @@ Status BasicVersionSet::WriteSnapshot(log::Writer* log) {
 
   std::string record;
   edit.EncodeTo(&record);
-  delete &edit;
   return log->AddRecord(record);
 }
 
