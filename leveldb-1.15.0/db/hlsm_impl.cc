@@ -359,7 +359,7 @@ bool TableLevel::withinPureMirroredLevel(uint64_t key){
 			level == std::min(0, runtime::top_mirror_end_level)); // delete obsolete level 0 file on secondary
 }
 
-int delete_secondary_file(leveldb::Env* const env, uint64_t number) {
+int delete_secondary_table(leveldb::Env* const env, uint64_t number) {
 	if (hlsm::config::secondary_storage_path == NULL)
 		return 0;
 	std::string fname = leveldb::TableFileName(hlsm::config::secondary_storage_path, number);

@@ -89,7 +89,14 @@ inline bool is_whole_level_move(int level) {
 
 } // cursor
 
-int delete_secondary_file(leveldb::Env* const, uint64_t);
+int delete_secondary_table(leveldb::Env* const, uint64_t);
+
+inline int maybe_delete_secondary_table(leveldb::Env* const env, uint64_t num) {
+	if (!hlsm::is_mirrored_write(num) )
+		delete_secondary_table(env, num);
+	return 0;
+}
+
 int prefetch_file(leveldb::RandomAccessFile*, uint64_t);
 
 } // namespace hlsm

@@ -446,7 +446,9 @@ Status DBImpl::RecoverLogFile(uint64_t log_number,
     if (mem->ApproximateMemoryUsage() > options_.write_buffer_size) {
       status = WriteLevel0Table(mem, edit, NULL);
       DEBUG_INFO(2, "Level 0 Table: %lu\n", hlsm::runtime::table_level.getLatest());
-      hlsm::delete_secondary_file(env_, hlsm::runtime::table_level.getLatest());
+      // if the table is not mirrored, then there may be a table
+      //   with the same name on the secondary store left unfinished in last execution
+      hlsm::maybe_delete_secondary_table(env_, hlsm::runtime::table_level.getLatest());
       if (!status.ok()) {
         // Reflect errors immediately so that conditions like full
         // file-systems cause the DB::Open() to fail.
@@ -460,7 +462,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number,
   if (status.ok() && mem != NULL) {
     status = WriteLevel0Table(mem, edit, NULL);
     DEBUG_INFO(2, "Level 0 Table: %lu\n", hlsm::runtime::table_level.getLatest());
-    hlsm::delete_secondary_file(env_, hlsm::runtime::table_level.getLatest());
+    hlsm::maybe_delete_secondary_table(env_, hlsm::runtime::table_level.getLatest());
     // Reflect errors immediately so that conditions like full
     // file-systems cause the DB::Open() to fail.
   }
