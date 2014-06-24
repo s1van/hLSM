@@ -109,6 +109,7 @@ struct Table::Rep {
  * PRE:	rep_ must be initialized in advance
  *  IN:	is_sequential == -1 implies that pattern is unknown
  */
+//ToDO: remove the assumption that no file is accessed both randomly and sequentially at the same time
 int Table::SetFileDescriptor(int is_sequential) {
 	rep_->file = rep_->primary_;
 	if (is_sequential == - 1) { // unknown pattern
@@ -226,7 +227,7 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
       }
 
       if (!keep) {
-        if (type == kTableFile && live.find(number) == live.end()) { // also no mirrored
+        if (type == kTableFile && live.find(number) == live.end()) { // also not mirrored
           table_cache_->Evict(number);
 
           Log(options_.info_log, "Delete on Secondary type=%d #%lld\n",
@@ -344,6 +345,12 @@ int TableLevel::remove(uint64_t key){
 }
 
 bool TableLevel::withinMirroredLevel(uint64_t key){
+	int level = get(key);
+	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
+	return (level >= runtime::mirror_start_level || level <=1); // <=1 for hLSM-tree 2-phase compaction
+}
+
+bool TableLevel::withinPureMirroredLevel(uint64_t key){
 	int level = get(key);
 	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
 	return (level >= runtime::mirror_start_level);

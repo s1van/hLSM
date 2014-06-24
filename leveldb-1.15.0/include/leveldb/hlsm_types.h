@@ -65,6 +65,7 @@ typedef struct entry_ entry_s;
 typedef struct {
 	pthread_mutex_t mutex;
 	TAILQ_HEAD(tailhead, entry_) head;
+	size_t length;
 
 	pthread_cond_t noop; //no operation
 	pthread_mutex_t cond_m;
@@ -77,9 +78,12 @@ typedef struct {
 #define OPQ_INIT(q_) 	do {		\
 		pthread_mutex_init(&(q_->mutex), NULL);	\
 		pthread_mutex_init(&(q_->cond_m), NULL);\
-		pthread_cond_init(&(q_->noop), NULL);\
+		pthread_cond_init(&(q_->noop), NULL);	\
 		TAILQ_INIT(&(q_->head));	\
+		q_->length = 0;	\
 	} while(0)
+
+#define OPQ_GET_LENGTH(q_)	((q_->length))
 
 #define OPQ_WAIT(q_) do { \
 		pthread_mutex_lock(&(q_->cond_m) );	\
@@ -99,6 +103,7 @@ typedef struct {
 		e_->op = op_;	\
 		pthread_mutex_lock(&(q_->mutex) );	\
 		TAILQ_INSERT_TAIL(&(q_->head), e_, entries_);	\
+		q_->length++;	\
 		pthread_mutex_unlock(&(q_->mutex) );\
 		OPQ_WAKEUP(q_);	\
 	} while(0)
@@ -176,9 +181,10 @@ typedef struct {
 		pthread_mutex_lock(&(q_->mutex) );	\
 		e_ = (q_->head.tqh_first);\
 		TAILQ_REMOVE(&(q_->head), (q_->head).tqh_first, entries_);\
+		q_->length--;	\
 		pthread_mutex_unlock(&(q_->mutex) );\
 		op_ = e_->op;	\
-		free(e_);			\
+		free(e_);		\
 	} while(0)
 
 #define INIT_HELPER_AND_QUEUE(helper_, queue_)	\
@@ -269,6 +275,7 @@ public:
 	uint64_t getLatest();
 	int remove(uint64_t);
 	bool withinMirroredLevel(uint64_t);
+	bool withinPureMirroredLevel(uint64_t);
 private:
 	std::tr1::unordered_map<uint64_t, int> mapping_;
 	uint64_t latest;

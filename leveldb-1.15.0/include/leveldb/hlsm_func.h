@@ -21,7 +21,7 @@ inline static bool do_prefetch (int is_sequential) {
 	return (is_sequential == 1);
 }
 
-inline static bool is_mirrored_write(const std::string& fname) {
+inline static bool is_mirrored_write(const std::string& fname, bool pure = false) {
 	DEBUG_INFO(2, "%s\n", fname.c_str());
 	size_t n = fname.find("ldb");
 	if (n != std::string::npos && hlsm::config::secondary_storage_path != NULL) {
@@ -32,8 +32,13 @@ inline static bool is_mirrored_write(const std::string& fname) {
 			int number = std::atoi(fname.substr(m+1, n-1).c_str());
 			DEBUG_INFO(2, "%s\t%d\n", fname.substr(m+1, n-1).c_str(), number);
 			// requires that table_level is updated before this call
-			if (hlsm::runtime::table_level.withinMirroredLevel(number))
-				return true;
+			if (pure) {
+				if (hlsm::runtime::table_level.withinPureMirroredLevel(number))
+					return true;
+			} else {
+				if (hlsm::runtime::table_level.withinMirroredLevel(number))
+					return true;
+			}
 		}
 	}
 	return false;

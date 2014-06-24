@@ -97,7 +97,7 @@ inline int move_file_down(FileMetaData* f, VersionEdit* edit, int level) {
 	return 0;
 }
 
-}
+} // namespace leveldb
 
 
 #endif

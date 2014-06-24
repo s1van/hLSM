@@ -401,16 +401,18 @@ class PosixEnv : public Env {
   }
 
   virtual Status DeleteFile(const std::string& fname_) {
+	DEBUG_INFO(2, "%s\n", fname_.c_str());
 	std::string fname = hlsm::relocate_file(fname_);
-    DEBUG_INFO(2, "%s\n", fname.c_str());
+
     if (unlink(fname.c_str()) != 0) {
       return IOError(fname, errno);
     }
-    if (hlsm::is_mirrored_write(fname)) {
+    if (hlsm::is_mirrored_write(fname, true)) {
     	OPQ_ADD_DELETE(hlsm::runtime::op_queue,
     			new std::string(PRIMARY_TO_SECONDARY_FILE(fname)));
     	hlsm::runtime::table_level.remove(hlsm::table_name_to_number(fname));
     }
+    DEBUG_INFO(2, "%s\n", fname.c_str());
     return Status::OK();
   }
 

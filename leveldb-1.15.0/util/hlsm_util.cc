@@ -108,8 +108,12 @@ static void *opq_helper(void * arg) {
 				delete fname;
 
 			} else if (op->type == MHalt) {
-				DEBUG_INFO(3, "MHalt");
-				break;
+				DEBUG_INFO(2, "MHalt\t#elem in Queue: %lu\n", OPQ_GET_LENGTH(op_queue));
+				if (OPQ_GET_LENGTH(op_queue) == 0) { //due to multi-threading, it may not be empty
+					break;
+				} else {
+					OPQ_ADD_HALT(hlsm::runtime::op_queue);
+				}
 			}
 
 			free(op);
@@ -118,7 +122,7 @@ static void *opq_helper(void * arg) {
 
 		OPQ_WAIT(op_queue);
 		DEBUG_INFO(3, "Helper Count: %d\n", c++);
-	}
+	} // while(1)
 
 	DEBUG_INFO(1, "Stop OPQ Helper\tQueue: %p\n", op_queue);
   return NULL;
