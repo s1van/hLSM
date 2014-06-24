@@ -277,6 +277,7 @@ class VersionSet {
   const char* LevelSummary(LevelSummaryStorage* scratch) const;
 
   virtual Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_) = 0;
+  virtual Status MoveFileDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_) = 0;
 
 protected:
   class Builder;
@@ -339,6 +340,7 @@ class BasicVersionSet: public VersionSet {
       EXCLUSIVE_LOCKS_REQUIRED(mu);
   Status Recover();
   Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
+  Status MoveFileDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
  private:
   friend class Compaction;

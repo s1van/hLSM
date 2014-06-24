@@ -705,10 +705,8 @@ void DBImpl::BackgroundCompaction() {
   } else if (!is_manual && c->IsTrivialMove() && hlsm::cursor::is_trivial_move(c->level()) ) {
 	DEBUG_INFO(1, "Trivial move level %d, file %lu\n", c->level(), c->input(0, 0)->number);
     // Move file to next level
-    assert(c->num_input_files(0) == 1);
-    FileMetaData* f = c->input(0, 0);
-    move_file_down(f, c->edit(), c->level());
-    status = versions_->LogAndApply(c->edit(), &mutex_);
+	status = versions_->MoveFileDown(c, &mutex_);
+	FileMetaData* f = c->input(0, 0);
     if (!status.ok()) {
       RecordBackgroundError(status);
     }

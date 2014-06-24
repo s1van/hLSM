@@ -21,6 +21,7 @@ public:
 	Status Recover();
 	void AddLiveLazyFiles(std::set<uint64_t>* live);
 	Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
+	Status MoveFileDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
 	Compaction* PickCompaction();
 

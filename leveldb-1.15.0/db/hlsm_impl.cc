@@ -47,7 +47,7 @@ int Version::PreloadMetadata(int max_level) {
 	return 0;
 }
 
-Status BasicVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
+Status BasicVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_) {
     assert(c->num_input_files(1) == 0);
     int level = c->level();
     leveldb::FileMetaData* const* files = &this->current()->files_[level][0];
@@ -72,6 +72,26 @@ Status BasicVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
 
     leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
     return status;
+}
+
+Status BasicVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
+	assert(c->num_input_files(0) == 1);
+	FileMetaData* f = c->input(0, 0);
+	int level = c->level();
+	VersionEdit *edit = c->edit();
+
+	DEBUG_INFO(2, "number: %lu\tlevel: %d\n", f->number, level);
+	edit->DeleteFile(level, f->number);
+	edit->AddFile(level + 1, f->number, f->file_size,
+			f->smallest, f->largest);
+	hlsm::runtime::table_level.add(f->number, level+1);
+	if (level + 1 == hlsm::runtime::mirror_start_level) { // need to copy the content to secondary
+		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
+				new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+	}
+	leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
+
+	return status;
 }
 
 VersionEdit* NewVersionEdit () {
