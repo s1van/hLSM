@@ -45,6 +45,7 @@ extern FILE *debug_fd;	// initialized using hlsm::config::debug_file (default: s
 extern bool  use_opq_thread;
 extern bool full_mirror;
 extern int mirror_start_level;
+extern int top_mirror_end_level;
 extern bool use_cursor_compaction;
 
 extern bool seqential_read_from_primary;

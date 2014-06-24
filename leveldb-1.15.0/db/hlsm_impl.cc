@@ -293,7 +293,8 @@ int init() {
 
 	} else if (hlsm::config::mode.ishLSM()) {
 		full_mirror = false;
-		mirror_start_level = 3; // logical level
+		mirror_start_level = 4; // logical level
+		top_mirror_end_level = 1;
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
 		random_read_from_primary = true;
@@ -347,13 +348,15 @@ int TableLevel::remove(uint64_t key){
 bool TableLevel::withinMirroredLevel(uint64_t key){
 	int level = get(key);
 	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
-	return (level >= runtime::mirror_start_level || level <=1); // <=1 for hLSM-tree 2-phase compaction
+	return (level >= runtime::mirror_start_level ||
+		level <= runtime::top_mirror_end_level); // <=1 for hLSM-tree 2-phase compaction
 }
 
 bool TableLevel::withinPureMirroredLevel(uint64_t key){
 	int level = get(key);
 	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
-	return (level >= runtime::mirror_start_level);
+	return (level >= runtime::mirror_start_level ||
+			level == std::min(0, runtime::top_mirror_end_level)); // delete obsolete level 0 file on secondary
 }
 
 int delete_secondary_file(leveldb::Env* const env, uint64_t number) {

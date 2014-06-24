@@ -700,7 +700,7 @@ void DBImpl::BackgroundCompaction() {
   Status status;
   if (c == NULL) {
     // Nothing to do
-  } else if (!is_manual && c->IsTrivialMove() && ( !hlsm::runtime::use_cursor_compaction || c->level() % 2 == 0)) {
+  } else if (!is_manual && c->IsTrivialMove() && hlsm::cursor::is_trivial_move(c->level()) ) {
 	DEBUG_INFO(1, "Trivial move level %d, file %lu\n", c->level(), c->input(0, 0)->number);
     // Move file to next level
     assert(c->num_input_files(0) == 1);
@@ -718,7 +718,7 @@ void DBImpl::BackgroundCompaction() {
         status.ToString().c_str(),
         versions_->LevelSummary(&tmp));
 
-  } else if (!is_manual && hlsm::runtime::use_cursor_compaction && c->level() % 2 == 1) {
+  } else if (!is_manual && hlsm::cursor::is_whole_level_move(c->level()) ) {
 	DEBUG_INFO(1, "Move the entire level %d\n", c->level());
 	// Move entire level to next level
 	status = versions_->MoveLevelDown(c, &mutex_);

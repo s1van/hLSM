@@ -1058,7 +1058,7 @@ void VersionSet::Finalize(Version* v) {
       // file size is small (perhaps because of a small write-buffer
       // setting, or very high compression ratios, or lots of
       // overwrites/deletions).
-      score = hlsm::cursor::calculate_level0_compaction_score(v->files_[level].size());
+      score = hlsm::cursor::calculate_level0_compaction_score(v->files_[level].size(), v->files_[level+1].size());
     } else {
       // Compute the ratio of current size to size limit.
       if (hlsm::runtime::use_cursor_compaction) {
