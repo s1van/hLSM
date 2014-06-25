@@ -91,14 +91,18 @@ extern leveldb::port::Mutex debug_mutex_;
 
 /*
  * Public Functions
- * Warning: two consecutive "locked" debug calls will cause deadlock
+ * Warning: debug "wrapping" a function that has "locked" debug calls will cause deadlock
+ *   e.g. DEBUG_MEASURE(func(){DEBUG_INFO()})
  */
+
+// with lock
 #define DEBUG_MEASURE(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_MEASURE(__VA_ARGS__))
 #define DEBUG_PRINT(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_INFO(__VA_ARGS__))
 #define DEBUG_META_ITER(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_META_ITER(__VA_ARGS__))
 #define DEBUG_LEVEL_CHECK(_level, _do) _DEBUG_LEVEL_CHECK(_level, _do)
 
+// no lock
 #define DEBUG_MEASURE_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_MEASURE(__VA_ARGS__))
 #define DEBUG_PRINT_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_INFO(__VA_ARGS__))
