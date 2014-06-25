@@ -41,6 +41,7 @@ bool use_opq_thread = false;
 bool full_mirror = false;
 int mirror_start_level = 1028;
 int top_mirror_end_level = -1;
+int top_pure_mirror_end_level = -1;
 bool use_cursor_compaction = false;
 
 bool seqential_read_from_primary = true;

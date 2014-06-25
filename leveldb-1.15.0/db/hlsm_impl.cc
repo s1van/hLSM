@@ -321,6 +321,7 @@ int init() {
 		full_mirror = false;
 		mirror_start_level = 6;
 		top_mirror_end_level = 1;
+		top_pure_mirror_end_level = 0;
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
 		random_read_from_primary = true;
@@ -384,7 +385,7 @@ bool TableLevel::withinPureMirroredLevel(uint64_t key){
 	int level = get(key);
 	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
 	return (level >= runtime::mirror_start_level ||
-			level == std::min(0, runtime::top_mirror_end_level)); // delete obsolete level 0 file on secondary
+			level <= runtime::top_pure_mirror_end_level); // delete obsolete level 0 file on secondary
 }
 
 int delete_secondary_table(leveldb::Env* const env, uint64_t number) {
