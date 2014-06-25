@@ -24,6 +24,7 @@ public:
 	Status MoveFileDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
 	Compaction* PickCompaction();
+	void PrintVersionSet();
 
 private:
  friend class Compaction;

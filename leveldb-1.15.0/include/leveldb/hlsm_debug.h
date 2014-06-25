@@ -84,5 +84,6 @@ extern FILE *debug_fd;
 #define DEBUG_PRINT(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_INFO(__VA_ARGS__))
 #define DEBUG_META_ITER(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_META_ITER(__VA_ARGS__))
+#define DEBUG_LEVEL_CHECK(_level, _do) _DEBUG_LEVEL_CHECK(_level, _do)
 
 #endif  //HLSM_DEBUG_H

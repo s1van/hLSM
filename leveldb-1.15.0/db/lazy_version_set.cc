@@ -365,6 +365,8 @@ Status LazyVersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
     }
   }
 
+  DEBUG_LEVEL_CHECK(2, PrintVersionSet());
+
   return s;
 }
 
@@ -635,6 +637,40 @@ Compaction* LazyVersionSet::PickCompaction() {
   SetupOtherInputs(c);
 
   return c;
+}
+
+void LazyVersionSet::PrintVersionSet() {
+	DEBUG_PRINT(0, "Print Version:\n");
+	for (Version* v = dummy_versions_.next_;
+			v != &dummy_versions_;
+			v = v->next_) {
+		for (int level = 0; level < config::kNumLevels; level++) {
+			const std::vector<FileMetaData*>& files = v->files_[level];
+			if (files.size() > 0) {
+				DEBUG_PRINT(0, "[level %d]\t", level);
+				for (size_t i = 0; i < files.size(); i++) {
+					DEBUG_PRINT(0, "%lu\t", files[i]->number);
+				}
+				DEBUG_PRINT(0, "\n");
+			}
+		}
+	}
+
+	DEBUG_PRINT(0, "Print Lazy Version:\n");
+	for (Version* v = dummy_lazy_versions_.next_;
+			v != &dummy_lazy_versions_;
+			v = v->next_) {
+		for (int level = 0; level < hlsm::runtime::kNumLazyLevels; level++) {
+			const std::vector<FileMetaData*>& files = v->files_[level];
+			if (files.size() > 0) {
+				DEBUG_PRINT(0, "[level %d]\t", level);
+				for (size_t i = 0; i < files.size(); i++) {
+					DEBUG_PRINT(0, "%lu\t", files[i]->number);
+				}
+				DEBUG_PRINT(0, "\n");
+			}
+		}
+	}
 }
 
 } // namespace leveldb
