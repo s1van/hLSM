@@ -9,6 +9,7 @@ namespace config {
 int kTargetFileSize = 2 * 1048576;
 int kL0_Size = 10;       // in MB
 int kLevelRatio = 10;    // enlarge the level size ten times when the db levels up
+int kMaxMemCompactLevel = 2;
 }
 
 }
@@ -48,6 +49,8 @@ bool meta_on_primary = true;
 bool log_on_primary = true;
 
 int kMinBytesPerSeek = 16384;
+
+int two_phase_end_level = 0;
 
 TableLevel table_level;
 uint32_t FileNameHash::hash[] = {0};

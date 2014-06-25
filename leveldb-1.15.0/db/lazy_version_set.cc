@@ -540,7 +540,7 @@ Status LazyVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 	assert(c->num_input_files(0) == 1);
 	FileMetaData* f = c->input(0, 0);
 	int level = c->level();
-	VersionEdit *edit = c->edit();
+	LazyVersionEdit* edit = reinterpret_cast<LazyVersionEdit*>(c->edit());
 
 	DEBUG_INFO(2, "number: %lu\tlevel: %d\n", f->number, level);
 	edit->DeleteFile(level, f->number);
@@ -549,7 +549,7 @@ Status LazyVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 	hlsm::runtime::table_level.add(f->number, level+1);
 	if (level + 1 == hlsm::runtime::mirror_start_level) { // need to copy the content to secondary
 		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
-				new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+			new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
 	}
 	leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
 

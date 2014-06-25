@@ -47,6 +47,10 @@ int Version::PreloadMetadata(int max_level) {
 	return 0;
 }
 
+/*
+ * Extend VersionSet
+ */
+
 Status BasicVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_) {
     assert(c->num_input_files(1) == 0);
     int level = c->level();
@@ -300,6 +304,7 @@ int init() {
 		use_cursor_compaction = true;
 		meta_on_primary = true;
 		log_on_primary = true;
+		leveldb::config::kMaxMemCompactLevel = 0;
 
 	} else if (hlsm::config::mode.isPartialbLSM()) {
 		full_mirror = false;
@@ -310,10 +315,11 @@ int init() {
 		meta_on_primary = false;
 		log_on_primary = false;
 		use_opq_thread = true;
+		leveldb::config::kMaxMemCompactLevel = 0;
 
 	} else if (hlsm::config::mode.ishLSM()) {
 		full_mirror = false;
-		mirror_start_level = 4; // logical level
+		mirror_start_level = 6;
 		top_mirror_end_level = 1;
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
@@ -321,6 +327,8 @@ int init() {
 		meta_on_primary = false;
 		log_on_primary = false;
 		use_opq_thread = true;
+		two_phase_end_level = 5; // cursor doubles the #level; level starts at 0
+		leveldb::config::kMaxMemCompactLevel = 0; // do not write memtable to levels other than 0
 	}
 
 	if (use_opq_thread)

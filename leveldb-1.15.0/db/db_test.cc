@@ -1229,7 +1229,7 @@ TEST(DBTest, HiddenValuesAreRemoved) {
 TEST(DBTest, DeletionMarkers1) {
   Put("foo", "v1");
   ASSERT_OK(dbfull()->TEST_CompactMemTable());
-  const int last = config::kMaxMemCompactLevel;
+  int last = config::kMaxMemCompactLevel;
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);   // foo => v1 is now in last level
 
   // Place a table at level last-1 to prevent merging with preceding mutation
@@ -1258,7 +1258,7 @@ TEST(DBTest, DeletionMarkers1) {
 TEST(DBTest, DeletionMarkers2) {
   Put("foo", "v1");
   ASSERT_OK(dbfull()->TEST_CompactMemTable());
-  const int last = config::kMaxMemCompactLevel;
+  int last = config::kMaxMemCompactLevel;
   ASSERT_EQ(NumTableFilesAtLevel(last), 1);   // foo => v1 is now in last level
 
   // Place a table at level last-1 to prevent merging with preceding mutation
@@ -1619,7 +1619,7 @@ TEST(DBTest, ManifestWriteError) {
     // Memtable compaction (will succeed)
     dbfull()->TEST_CompactMemTable();
     ASSERT_EQ("bar", Get("foo"));
-    const int last = config::kMaxMemCompactLevel;
+    int last = config::kMaxMemCompactLevel;
     ASSERT_EQ(NumTableFilesAtLevel(last), 1);   // foo=>bar is now in last level
 
     // Merging compaction (will fail)

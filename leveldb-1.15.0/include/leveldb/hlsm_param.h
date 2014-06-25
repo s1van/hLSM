@@ -54,7 +54,10 @@ extern bool meta_on_primary;
 extern bool log_on_primary;
 
 extern int kMinBytesPerSeek;
-static const int kNumLazyLevels = 6 * leveldb::config::kNumLevels; // old, new, and 4 delta (ratio)
+
+// new, and 4 (size ratio) delta sub-levels; last level has one less sub-level
+static const int kNumLazyLevels = 2 + 5 * (leveldb::config::kNumLevels/2 - 2) + 4;
+extern int two_phase_end_level;
 
 extern TableLevel table_level;
 extern std::set<uint64_t> moving_tables_; // tables move from primary to secondary during 2-phase compaction in hlsm-tree
