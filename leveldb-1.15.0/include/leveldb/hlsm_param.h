@@ -40,7 +40,9 @@ extern char* debug_file;// where to dump the debug info
 namespace runtime {
 extern pthread_t *opq_helper;
 extern opq op_queue;
+
 extern FILE *debug_fd;	// initialized using hlsm::config::debug_file (default: stderr)
+extern leveldb::port::Mutex debug_mutex_;
 
 extern bool  use_opq_thread;
 extern bool full_mirror;

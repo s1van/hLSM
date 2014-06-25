@@ -35,7 +35,9 @@ char* debug_file = NULL;
 namespace runtime {
 pthread_t *opq_helper = NULL;
 opq op_queue = NULL;
+
 FILE *debug_fd = stderr;
+leveldb::port::Mutex debug_mutex_;
 
 bool use_opq_thread = false;
 bool full_mirror = false;

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <sys/time.h>
+#include "port/port_posix.h"
 
 /**************** private ****************/
 namespace hlsm {
@@ -13,6 +14,7 @@ extern int debug_level;
 
 namespace runtime {
 extern FILE *debug_fd;
+extern leveldb::port::Mutex debug_mutex_;
 } // runtime
 }
 
@@ -74,16 +76,36 @@ extern FILE *debug_fd;
 	} while(0)
 
 #define _DEBUG_LEVEL_CHECK(_level, _do) do {        \
+		hlsm::runtime::debug_mutex_.Lock();  \
+		if (_level <= hlsm::config::debug_level) {  \
+			_do;\
+		}       \
+		hlsm::runtime::debug_mutex_.Unlock();\
+	} while(0)
+
+#define _DEBUG_LEVEL_CHECK_NOLOCK(_level, _do) do {        \
 		if (_level <= hlsm::config::debug_level) {  \
 			_do;\
 		}       \
 	} while(0)
 
-/**************** public ****************/
+/*
+ * Public Functions
+ * Warning: two consecutive "locked" debug calls will cause deadlock
+ */
 #define DEBUG_MEASURE(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_MEASURE(__VA_ARGS__))
 #define DEBUG_PRINT(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_INFO(__VA_ARGS__))
 #define DEBUG_META_ITER(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_META_ITER(__VA_ARGS__))
 #define DEBUG_LEVEL_CHECK(_level, _do) _DEBUG_LEVEL_CHECK(_level, _do)
+
+#define DEBUG_MEASURE_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_MEASURE(__VA_ARGS__))
+#define DEBUG_PRINT_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_PRINT(__VA_ARGS__))
+#define DEBUG_INFO_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_INFO(__VA_ARGS__))
+#define DEBUG_META_ITER_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_META_ITER(__VA_ARGS__))
+#define DEBUG_LEVEL_CHECK_NOLOCK(_level, _do) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _do)
+
+#define DEBUG_BULK_START	hlsm::runtime::debug_mutex_.Lock()
+#define DEBUG_BULK_END	hlsm::runtime::debug_mutex_.Unlock()
 
 #endif  //HLSM_DEBUG_H
