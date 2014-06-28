@@ -29,6 +29,7 @@ public:
 
 	hlsm::delta_meta_t* GetDeltaLevelOffsets() { return delta_meta_;  }
 	Version* current_lazy() const { return current_lazy_; }
+	bool isLazyLevelNonEmpty(int level) {return current_lazy_->NumFiles(level) > 0;}
 
 private:
  friend class Compaction;

@@ -658,13 +658,13 @@ Status LazyVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     if (llevel > 0 && llevel < hlsm::runtime::two_phase_end_level) {
     	int new_level = hlsm::get_hlsm_new_level(level);
     	leveldb::FileMetaData* const* files = &this->current_lazy()->files_[new_level][0];
-    	size_t num_files = this->current_lazy()->files_[new_level].size();
+    	size_t num_files_new_level = this->current_lazy()->files_[new_level].size();
     	int active_delta_level = hlsm::get_active_delta_level(delta_meta_, llevel + 1);
 
     	DEBUG_INFO(2, "level:%d, llevel: %d, new_level: %d, active_delta_level: %d\n",
     			level, llevel, new_level, active_delta_level);
     	//move new_level to the active delta level below
-    	for(int i = 0; i < num_files; i++) {
+    	for(int i = 0; i < num_files_new_level; i++) {
     		leveldb::FileMetaData* f = files[i];
     		edit->DeleteLazyFile(new_level, f->number);
     		edit->AddLazyFile(active_delta_level, f->number, f->file_size,
@@ -686,7 +686,8 @@ Status LazyVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
 
     	// update delta level meta
     	edit->RollForwardDeltaLevels(llevel);
-    	edit->AdvanceActiveDeltaLevel(llevel + 1);
+    	if (num_files_new_level > 0)
+    		edit->AdvanceActiveDeltaLevel(llevel + 1);
 
     } else if (llevel == hlsm::runtime::two_phase_end_level) {
     	// clear delta levels related to the new level
