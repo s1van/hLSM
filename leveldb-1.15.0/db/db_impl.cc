@@ -19,6 +19,7 @@
 #include "db/memtable.h"
 #include "db/table_cache.h"
 #include "db/version_set.h"
+#include "db/lazy_version_set.h"
 #include "db/write_batch_internal.h"
 #include "db/hlsm_impl.h"
 #include "leveldb/db.h"
@@ -314,6 +315,12 @@ Status DBImpl::Recover(VersionEdit* edit) {
   }
 
   s = versions_->Recover();
+
+  /* versions_Recover() uses an internal VersionEdit
+   *   need to apply the updates to current edit
+   */
+  CALL_IF_HLSM(reinterpret_cast<LazyVersionEdit*>(edit)->SetDeltaLevels(versions_));
+
   if (s.ok()) {
     SequenceNumber max_sequence(0);
 
@@ -509,6 +516,9 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     }
     edit->AddFile(level, meta.number, meta.file_size,
                   meta.smallest, meta.largest);
+    CALL_IF_HLSM(assert(level == 0));
+    CALL_IF_HLSM(reinterpret_cast<LazyVersionEdit*>(edit)
+    		->AddLazyFile(level, meta.number, meta.file_size, meta.smallest, meta.largest));
   }
 
   CompactionStats stats;
@@ -523,11 +533,13 @@ void DBImpl::CompactMemTable() {
   assert(imm_ != NULL);
 
   // Save the contents of the memtable as a new Table
-  VersionEdit &edit = (*NewVersionEdit());
+  VersionEdit &edit = (*NewVersionEdit(versions_));
   Version* base = versions_->current();
   base->Ref();
   Status s = WriteLevel0Table(imm_, &edit, base);
   base->Unref();
+
+  DEBUG_INFO(1, "#Files of Level 0: %d\n", base->NumFiles(0));
 
   if (s.ok() && shutting_down_.Acquire_Load()) {
     s = Status::IOError("Deleting DB during memtable compaction");
@@ -537,6 +549,7 @@ void DBImpl::CompactMemTable() {
   if (s.ok()) {
     edit.SetPrevLogNumber(0);
     edit.SetLogNumber(logfile_number_);  // Earlier logs no longer needed
+
     s = versions_->LogAndApply(&edit, &mutex_);
   }
 
@@ -881,6 +894,10 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
         level + 1,
         out.number, out.file_size, out.smallest, out.largest);
   }
+  DEBUG_INFO(1, "Compact Level: %d, #output: %lu\n", level, compact->outputs.size());
+  CALL_IF_HLSM(reinterpret_cast<LazyVersionEdit *>(compact->compaction->edit())
+		  ->UpdateLazyLevels(level, versions_, compact->compaction,
+				  reinterpret_cast<std::vector<LazyVersionEdit::Output> &>(compact->outputs) ));
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
 

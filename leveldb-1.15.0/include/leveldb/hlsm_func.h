@@ -3,11 +3,18 @@
 
 #include <string>
 #include <cstdlib>
+#include <vector>
 #include "leveldb/hlsm_param.h"
 
 
 #define FILE_HAS_SUFFIX(fname_, str_) ((fname_.find(str_) != std::string::npos))
 #define PRIMARY_TO_SECONDARY_FILE(fname_) (( std::string(hlsm::config::secondary_storage_path) + fname_.substr(fname_.find_last_of("/")) ))
+
+#define CALL_IF_HLSM(do_) do { if(hlsm::config::mode.ishLSM()) {do_;} } while(0)
+
+#define debug_detla_meta(meta_) \
+	DEBUG_INFO(2, "start: %u, clear: %u, active: %u\n", \
+			meta_->start, meta_->clear, meta_->active);
 
 namespace hlsm {
 
@@ -86,9 +93,79 @@ inline double MaxBytesForLevel(int level) {
 }
 
 /*
+ * hLSM Level conversion
+ * on_primary		on_secondary	logically	physical_pri	physical_sec
+ * L0.L|L0.R		L0.L|L0.R		LL0			L1|L0			L1|L0
+ * L1.L|L1.R		L1.NEW|…|R2|R1	LL1			L3|L2			L?|…|L3|L2
+ * ......
+ * X.L|X.R			…|R2|R1			LLX (end of 2-phase level)
+ * X+1.L|X+1.R		X+1.L|X+1.R		LL<X+1>
+ */
+
+inline int get_logical_level(int original_level) {
+	return original_level / 2;
+}
+
+inline int get_hlsm_new_level(int original_level) {
+	int logical_level = get_logical_level(original_level);
+	assert(logical_level >0 && original_level <= hlsm::runtime::two_phase_end_level);
+
+	return logical_level * (hlsm::runtime::delta_level_num + 1) + 1;
+}
+
+/*
  *  Within hlsm_util.cc
  */
 int init_opq_helpler();
+
+/*
+ * DeltaLevelMeta
+ */
+inline void set_delta_meta(delta_meta_t *meta, uint32_t start, uint32_t clear, uint32_t active) {
+	meta->start = start;
+	meta->clear = clear;
+	meta->active = active;
+}
+
+inline void set_delta_meta(delta_meta_t *dst, delta_meta_t *src) {
+	dst->start = src->start;
+	dst->clear = src->clear;
+	dst->active = src->active;
+}
+
+inline bool is_valid_detla_meta(delta_meta_t *meta) {
+	return meta->start <= hlsm::runtime::delta_level_num &&
+		   meta->clear <= hlsm::runtime::delta_level_num &&
+		   meta->active <= hlsm::runtime::delta_level_num;
+}
+
+inline uint32_t get_active_delta_level(delta_meta_t meta[], int llevel) {
+	return llevel * (hlsm::runtime::delta_level_num + 1) + 1 - meta[llevel].active;
+}
+
+inline int get_pure_mirror_level(int level) {
+	int lnum = hlsm::runtime::two_phase_end_level + 1;
+	assert(level >= 2 * lnum);
+	return get_hlsm_new_level(2 * lnum - 1)
+			+ level - 2 * lnum;
+}
+
+inline std::vector<uint32_t> get_obsolete_delta_levels(delta_meta_t meta[], int llevel) {
+	std::vector<uint32_t> levels;
+	uint32_t start = meta[llevel].start;
+	uint32_t clear = meta[llevel].clear;
+
+	DEBUG_INFO(2, "start: %u, clear: %u\n", start, clear);
+	// require: start and clear are set 0 by default
+	while (start != clear) { // levels: start+1, _2, ..., clear
+		assert(start !=0 && clear != 0);
+		start = start + 1;
+		if (start > hlsm::runtime::delta_level_num) start = 1;
+		levels.push_back(llevel * (hlsm::runtime::delta_level_num + 1) + 1 - start);
+	}
+
+	return levels;
+}
 
 } // hlsm
 

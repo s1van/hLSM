@@ -3,6 +3,7 @@
 
 #include "db/version_set.h"
 #include "db/lazy_version_edit.h"
+#include "leveldb/hlsm_param.h"
 
 namespace leveldb {
 
@@ -26,9 +27,13 @@ public:
 	Compaction* PickCompaction();
 	void PrintVersionSet();
 
+	hlsm::delta_meta_t* GetDeltaLevelOffsets() { return delta_meta_;  }
+	Version* current_lazy() const { return current_lazy_; }
+
 private:
  friend class Compaction;
  friend class Version;
+ friend class Builder;
 
  // Save current contents to *log
  Status WriteSnapshot(log::Writer* log);
@@ -38,6 +43,8 @@ private:
 
  Version dummy_lazy_versions_;
  Version* current_lazy_;
+
+ hlsm::delta_meta_t delta_meta_[hlsm::runtime::kLogicalLevels]; // new level - offset returns the current(active) delta level
 
  // No copying allowed
  LazyVersionSet(const LazyVersionSet&);

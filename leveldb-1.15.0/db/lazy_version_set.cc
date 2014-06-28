@@ -39,7 +39,7 @@ class LazyVersionSet::Builder {
     FileSet* added_files;
   };
 
-  VersionSet* vset_;
+  LazyVersionSet* vset_;
   Version* base_;
   Version* lazy_base_;
   LevelState levels_[leveldb::config::kNumLevels];
@@ -47,7 +47,7 @@ class LazyVersionSet::Builder {
 
  public:
   // Initialize a builder with the files from *base and other info from *vset
-  Builder(VersionSet* vset, Version* base, Version* lazy_base)
+  Builder(LazyVersionSet* vset, Version* base, Version* lazy_base)
       : vset_(vset),
         base_(base),
         lazy_base_(lazy_base) {
@@ -98,6 +98,13 @@ class LazyVersionSet::Builder {
       const int level = edit->compact_pointers_[i].first;
       vset_->compact_pointer_[level] =
           edit->compact_pointers_[i].second.Encode().ToString();
+    }
+
+    // Update active delta level offset
+    for (int i = 0; i < hlsm::runtime::kLogicalLevels; i++) {
+    	hlsm::set_delta_meta(&(vset_->delta_meta_[i]), &(edit->delta_meta_[i]) );
+    	debug_detla_meta((&(vset_->delta_meta_[i])) );
+    	assert(hlsm::is_valid_detla_meta(&(edit->delta_meta_[i]) ));
     }
 
     // Delete files
@@ -386,6 +393,9 @@ Status LazyVersionSet::WriteSnapshot(log::Writer* log) {
     }
   }
 
+  // Save delta level offsets
+  edit.SetDeltaLevels(delta_meta_);
+
   // Save files
   for (int level = 0; level < leveldb::config::kNumLevels; level++) {
     const std::vector<FileMetaData*>& files = current_->files_[level];
@@ -543,6 +553,7 @@ Status LazyVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 	FileMetaData* f = c->input(0, 0);
 	int level = c->level();
 	LazyVersionEdit* edit = reinterpret_cast<LazyVersionEdit*>(c->edit());
+	edit->SetDeltaLevels(delta_meta_);
 
 	DEBUG_INFO(2, "number: %lu\tlevel: %d\n", f->number, level);
 	edit->DeleteFile(level, f->number);
@@ -550,9 +561,50 @@ Status LazyVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 			f->smallest, f->largest);
 	hlsm::runtime::table_level.add(f->number, level+1);
 	if (level + 1 == hlsm::runtime::mirror_start_level) { // need to copy the content to secondary
+
+	}
+
+/*	X.L -> (X+1).R
+ *	X == 0 (logical)
+ *		move file to the active delta level at level 1
+ *	X > 0
+ *		async copy file to the secondary
+ *		add file to X.NEW
+ *	X == 2_phase_end
+ *		no X.L, async copy file (pure mirrored)
+ *		add file to (X+1).R
+ *	X > 2_phase_end
+ *		delete file from X.L
+ *		add file to (X+1).R
+ */
+	int llevel = hlsm::get_logical_level(level);
+	if (llevel == 0) {
+		assert(level == 1);
+		edit->DeleteLazyFile(level, f->number);
+		edit->AddLazyFile(hlsm::get_active_delta_level(delta_meta_, 1),
+				f->number, f->file_size, f->smallest, f->largest);
+
+	} else if (llevel > 0 && llevel < hlsm::runtime::two_phase_end_level) {
+		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
+					new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+		edit->AddLazyFile(hlsm::get_hlsm_new_level(level),
+			f->number, f->file_size, f->smallest, f->largest);
+
+	} else if (llevel == hlsm::runtime::two_phase_end_level) {
 		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
 			new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+		// (X+1).R level since last 2-phase level has no new sub-level
+		int rlevel = hlsm::get_hlsm_new_level(level);
+		edit->AddLazyFile(rlevel, f->number, f->file_size, f->smallest, f->largest);
+
+	// pure mirror
+	} else if (llevel > hlsm::runtime::two_phase_end_level) {
+		int pure_mirror_level = hlsm::get_pure_mirror_level(level);
+		edit->DeleteLazyFile(pure_mirror_level, f->number);
+		edit->AddLazyFile(pure_mirror_level + 1,
+				f->number, f->file_size, f->smallest, f->largest);
 	}
+
 	leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
 
 	return status;
@@ -566,21 +618,105 @@ Status LazyVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     size_t num_files = this->current()->files_[level].size();
     DEBUG_INFO(2, "move %lu files from level %d to level %d\n", num_files, level, level+1);
 
+    LazyVersionEdit* edit = reinterpret_cast<LazyVersionEdit*>(c->edit());
+    edit->SetDeltaLevels(delta_meta_);
+
     for(int i = 0; i < num_files; i++) {
     	leveldb::FileMetaData* f = files[i];
     	c->edit()->DeleteFile(level, f->number);
     	c->edit()->AddFile(level + 1, f->number, f->file_size,
-    	                       f->smallest, f->largest);
+    			f->smallest, f->largest);
     	hlsm::runtime::table_level.add(f->number, c->level()+1);
     	DEBUG_INFO(3, "[%d/%lu] number: %lu\t size: %lu\n", i+1, num_files, f->number, f->file_size);
     }
 
-    if (c->level() + 1 == hlsm::runtime::mirror_start_level) // need to copy the content to secondary
+    if (c->level() + 1 == hlsm::runtime::mirror_start_level) {// need to copy the content to secondary
     	for(int i = 0; i < num_files; i++) {
     		leveldb::FileMetaData* f = files[i];
     		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
     			new std::string(leveldb::TableFileName(hlsm::config::primary_storage_path, f->number)) );
     	}
+    }
+
+//	X.R -> X.L
+//	X == 0 will use compaction (is_whole_level_move() )
+//	X > 0, implies X.L is empty, so X.NEW is ready if not empty
+//		Move X.NEW to (X+1).R?, update active delta level
+//		clear delta levels related to X.NEW
+//		mark clear point for delta level sequence
+//		X: (clear, active, +1)
+//		X+1: (=, =, +1)
+//	X == 2_phase_end
+//		clear delta levels related to the imaginary X.NEW
+//		mark clear point for delta level sequence
+//		X: (clear, active, +1)
+//	X > 2_phase_end
+//		clear files at this level
+//		add files to level + 1
+
+    int llevel = hlsm::get_logical_level(level);
+    if (llevel > 0 && llevel < hlsm::runtime::two_phase_end_level) {
+    	int new_level = hlsm::get_hlsm_new_level(level);
+    	leveldb::FileMetaData* const* files = &this->current_lazy()->files_[new_level][0];
+    	size_t num_files = this->current_lazy()->files_[new_level].size();
+    	int active_delta_level = hlsm::get_active_delta_level(delta_meta_, llevel + 1);
+
+    	DEBUG_INFO(2, "level:%d, llevel: %d, new_level: %d, active_delta_level: %d\n",
+    			level, llevel, new_level, active_delta_level);
+    	//move new_level to the active delta level below
+    	for(int i = 0; i < num_files; i++) {
+    		leveldb::FileMetaData* f = files[i];
+    		edit->DeleteLazyFile(new_level, f->number);
+    		edit->AddLazyFile(active_delta_level, f->number, f->file_size,
+    				f->smallest, f->largest);
+    	}
+
+    	// clear delta levels related to the new level
+    	std::vector<uint32_t> dlevels = hlsm::get_obsolete_delta_levels(delta_meta_, llevel);
+    	for (std::vector<uint32_t>::iterator it = dlevels.begin() ; it != dlevels.end(); ++it) {
+    		int dlevel = *it;
+
+    		leveldb::FileMetaData* const* files = &this->current_lazy()->files_[dlevel][0];
+    		size_t num_files = this->current_lazy()->files_[dlevel].size();
+    		for(int i = 0; i < num_files; i++) {
+    			leveldb::FileMetaData* f = files[i];
+    			edit->DeleteLazyFile(dlevel, f->number);
+    		}
+    	}
+
+    	// update delta level meta
+    	edit->RollForwardDeltaLevels(llevel);
+    	edit->AdvanceActiveDeltaLevel(llevel + 1);
+
+    } else if (llevel == hlsm::runtime::two_phase_end_level) {
+    	// clear delta levels related to the new level
+    	std::vector<uint32_t> dlevels = hlsm::get_obsolete_delta_levels(delta_meta_, llevel);
+    	for (std::vector<uint32_t>::iterator it = dlevels.begin() ; it != dlevels.end(); ++it) {
+    		int dlevel = *it;
+
+    		leveldb::FileMetaData* const* files = &this->current_lazy()->files_[dlevel][0];
+    		size_t num_files = this->current_lazy()->files_[dlevel].size();
+    		for(int i = 0; i < num_files; i++) {
+    			leveldb::FileMetaData* f = files[i];
+    			edit->DeleteLazyFile(dlevel, f->number);
+    		}
+    	}
+
+    	// update delta level meta
+    	edit->RollForwardDeltaLevels(llevel);
+
+    // pure mirror from now on, simply move files to next level
+    } else if (llevel > hlsm::runtime::two_phase_end_level) {
+    	int pure_mirror_level = hlsm::get_pure_mirror_level(level);
+    	leveldb::FileMetaData* const* files = &this->current_lazy()->files_[pure_mirror_level][0];
+    	size_t num_files = this->current_lazy()->files_[pure_mirror_level].size();
+    	for(int i = 0; i < num_files; i++) {
+    		leveldb::FileMetaData* f = files[i];
+    		edit->DeleteLazyFile(pure_mirror_level, f->number);
+    		edit->AddLazyFile(pure_mirror_level + 1, f->number,
+    				f->file_size, f->smallest, f->largest);
+    	}
+    }
 
     leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
     return status;
@@ -674,6 +810,25 @@ void LazyVersionSet::PrintVersionSet() {
 		}
 		DEBUG_PRINT_NOLOCK(0, "\n");
 	}
+
+	DEBUG_PRINT_NOLOCK(0, "Delta Level Start:\t");
+	for (int i = 0; i < hlsm::runtime::kLogicalLevels; i++) {
+		DEBUG_PRINT_NOLOCK(0, "%u\t", delta_meta_[i].start);
+	}
+	DEBUG_PRINT_NOLOCK(0, "\n");
+
+	DEBUG_PRINT_NOLOCK(0, "Delta Level Clear:\t");
+	for (int i = 0; i < hlsm::runtime::kLogicalLevels; i++) {
+		DEBUG_PRINT_NOLOCK(0, "%u\t", delta_meta_[i].clear);
+	}
+	DEBUG_PRINT_NOLOCK(0, "\n");
+
+	DEBUG_PRINT_NOLOCK(0, "Delta Level Active:\t");
+	for (int i = 0; i < hlsm::runtime::kLogicalLevels; i++) {
+		DEBUG_PRINT_NOLOCK(0, "%u\t", delta_meta_[i].active);
+	}
+	DEBUG_PRINT_NOLOCK(0, "\n");
+
 	DEBUG_BULK_END;
 }
 

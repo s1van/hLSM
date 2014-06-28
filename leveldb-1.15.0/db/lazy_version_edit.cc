@@ -5,7 +5,9 @@
 #include "db/version_edit.h"
 #include "db/lazy_version_edit.h"
 #include "db/version_set.h"
+#include "db/lazy_version_set.h"
 #include "util/coding.h"
+#include "leveldb/hlsm_func.h"
 
 namespace leveldb {
 
@@ -22,10 +24,15 @@ enum Tag {
   // 8 was used for large value refs
   kPrevLogNumber        = 9,
   kDeletedLazyFile		= 10,
-  kNewLazyFile              = 11
+  kNewLazyFile          = 11,
+  kDeltaLevelOffset		= 12
 };
 
 LazyVersionEdit::LazyVersionEdit() {Clear();}
+LazyVersionEdit::LazyVersionEdit(VersionSet* v) {
+	Clear();
+	SetDeltaLevels(v);
+}
 
 void LazyVersionEdit::Clear() {
   comparator_.clear();
@@ -70,6 +77,14 @@ void LazyVersionEdit::EncodeTo(std::string* dst) const {
     PutVarint32(dst, kCompactPointer);
     PutVarint32(dst, compact_pointers_[i].first);  // level
     PutLengthPrefixedSlice(dst, compact_pointers_[i].second.Encode());
+  }
+
+  for (size_t i = 0; i < hlsm::runtime::kLogicalLevels; i++) {
+    PutVarint32(dst, kDeltaLevelOffset);
+    PutVarint32(dst, i);  // level
+    PutVarint32(dst, delta_meta_[i].start);
+    PutVarint32(dst, delta_meta_[i].clear);
+    PutVarint32(dst, delta_meta_[i].active);
   }
 
   for (DeletedFileSet::const_iterator iter = deleted_files_.begin();
@@ -146,6 +161,7 @@ Status LazyVersionEdit::DecodeFrom(const Slice& src) {
   Slice input = src;
   const char* msg = NULL;
   uint32_t tag;
+  uint32_t start, clear, active;
 
   // Temporary storage for parsing
   int level;
@@ -162,6 +178,23 @@ Status LazyVersionEdit::DecodeFrom(const Slice& src) {
           has_comparator_ = true;
         } else {
           msg = "comparator name";
+        }
+        break;
+
+      case kDeltaLevelOffset:
+        if (GetLazyLevel(&input, &level) &&
+        	GetVarint32(&input, &start)  &&
+        	GetVarint32(&input, &clear)  &&
+        	GetVarint32(&input, &active)) {
+        	DEBUG_INFO(2, "level: %d, start: %u, clear: %u, active: %u\n"
+        			, level, start, clear, active);
+        	hlsm::set_delta_meta(&(delta_meta_[level]),
+        			start, clear, active);
+        	assert(start <= hlsm::runtime::delta_level_num &&
+        		   clear <= hlsm::runtime::delta_level_num &&
+        		   active <= hlsm::runtime::delta_level_num);
+        } else {
+          msg = "delta level offset";
         }
         break;
 
@@ -328,5 +361,10 @@ std::string LazyVersionEdit::DebugString() const {
   r.append("\n}\n");
   return r;
 }
+
+void LazyVersionEdit::SetDeltaLevels(VersionSet* v) {
+	  SetDeltaLevels(reinterpret_cast<LazyVersionSet*>(v)
+			  ->GetDeltaLevelOffsets() );
+ }
 
 }  // namespace leveldb

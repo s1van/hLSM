@@ -7,6 +7,7 @@
 
 /************************** Constants *****************************/
 #define BLKSIZE 4096
+#define HLSM_LOGICAL_LEVEL_NUM leveldb::config::kNumLevels/2
 
 /************************** Configuration *****************************/
 namespace leveldb{
@@ -58,8 +59,14 @@ extern bool log_on_primary;
 
 extern int kMinBytesPerSeek;
 
-// new, and 4 (size ratio) delta sub-levels; last level has one less sub-level
-static const int kNumLazyLevels = 2 + 5 * (leveldb::config::kNumLevels/2 - 2) + 4;
+/* mirror L0.L|L0.R
+ * new, delta sub-levels for each original cursor level
+ * last 2-phase level has no NEW sub-level
+ * last level is full mirrored
+ */
+static const int delta_level_num = 8;
+static const int kLogicalLevels = leveldb::config::kNumLevels / 2;
+static const int kNumLazyLevels = 2 + (delta_level_num + 1) * (kLogicalLevels - 3) + delta_level_num + 2;
 extern int two_phase_end_level;
 
 extern TableLevel table_level;
@@ -67,6 +74,7 @@ extern std::set<uint64_t> moving_tables_; // tables move from primary to seconda
 } // runtime
 
 } // hlsm
+
 
 #endif
 

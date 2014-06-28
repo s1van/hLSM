@@ -173,7 +173,7 @@ class PosixMmapReadableFile: public RandomAccessFile {
 
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const {
-	DEBUG_INFO(2, "BGN\t%s\t%lu\t%lu\n", filename_.c_str(), offset, n);
+	DEBUG_INFO(3, "BGN\t%s\t%lu\t%lu\n", filename_.c_str(), offset, n);
     Status s;
     if (offset + n > length_) {
       *result = Slice();
@@ -181,7 +181,7 @@ class PosixMmapReadableFile: public RandomAccessFile {
     } else {
       *result = Slice(reinterpret_cast<char*>(mmapped_region_) + offset, n);
     }
-	DEBUG_INFO(2, "END\t%s\t%lu\t%lu\n", filename_.c_str(), offset, n);
+	DEBUG_INFO(3, "END\t%s\t%lu\t%lu\n", filename_.c_str(), offset, n);
     return s;
   }
 };

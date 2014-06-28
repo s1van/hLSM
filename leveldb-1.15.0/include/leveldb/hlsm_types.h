@@ -44,7 +44,7 @@ public:
 //1. Status Append(const Slice& data)
 //2. Status Sync()
 //3. Status Close()
-typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose, MTruncate, MCopyFile} mio_op_t;
+typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose, MTruncate, MCopyFile, MCopyDeletedFile} mio_op_t;
 
 typedef struct {
 	mio_op_t type;
@@ -173,6 +173,14 @@ typedef struct {
 		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
 		op_->type = MCopyFile;		\
 		op_->ptr1 = (void*)fname_;	\
+		OPQ_ADD(q_, op_);		\
+	} while(0)
+
+#define OPQ_ADD_COPY_DELETED_FILE(q_, fname_, fnum)	do{	\
+		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
+		op_->type = MCopyDeletedFile;		\
+		op_->ptr1 = (void*)fname_;	\
+		op_->offset = fnum;		\
 		OPQ_ADD(q_, op_);		\
 	} while(0)
 
@@ -315,6 +323,16 @@ public:
 };
 
 } // runtime
+
+struct DeltaLevelMeta{
+	uint32_t start; // start + 1 is the first delta level in use
+	uint32_t clear; // clear until this level
+	uint32_t active;
+
+	DeltaLevelMeta(): start(0), clear(0), active(1) {}
+};
+
+typedef struct DeltaLevelMeta delta_meta_t;
 
 } // hlsm
 

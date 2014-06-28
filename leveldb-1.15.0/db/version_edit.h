@@ -14,7 +14,6 @@ namespace leveldb {
 
 class VersionSet;
 class BasicVersionSet;
-class LazyVersionSet;
 
 struct FileMetaData {
   int refs;
@@ -114,7 +113,7 @@ public:
 	std::string DebugString() const;
 };
 
-VersionEdit *NewVersionEdit();
+VersionEdit *NewVersionEdit(VersionSet* v = NULL);
 }  // namespace leveldb
 
 #endif  // STORAGE_LEVELDB_DB_VERSION_EDIT_H_

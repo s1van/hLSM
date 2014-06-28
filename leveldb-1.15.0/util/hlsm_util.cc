@@ -107,6 +107,14 @@ static void *opq_helper(void * arg) {
 				DEBUG_INFO(2, "MCopyFile\tfname: %s\n", fname->c_str());
 				delete fname;
 
+			} else if (op->type == MCopyDeletedFile) {
+				std::string *fname = (std::string*) (op->ptr1);
+				copy_file(PRIMARY_TO_SECONDARY_FILE((*fname)).c_str(), fname->c_str());
+				uint64_t fnum = op->offset; // just for convenience
+				DEBUG_INFO(2, "MCopyFile\tfname: %s\n", fname->c_str());
+				delete fname;
+				hlsm::runtime::moving_tables_.erase(fnum);
+
 			} else if (op->type == MHalt) {
 				DEBUG_INFO(2, "MHalt\t#elem in Queue: %lu\n", OPQ_GET_LENGTH(op_queue));
 				if (OPQ_GET_LENGTH(op_queue) == 0) { //due to multi-threading, it may not be empty

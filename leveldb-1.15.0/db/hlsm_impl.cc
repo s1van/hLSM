@@ -98,9 +98,14 @@ Status BasicVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 	return status;
 }
 
-VersionEdit* NewVersionEdit () {
-	if (hlsm::config::mode.ishLSM() )
-		return new LazyVersionEdit();
+VersionEdit* NewVersionEdit (VersionSet* v) {
+	DEBUG_INFO(2, "VersionSet: %p\n", v);
+	if (hlsm::config::mode.ishLSM() ) {
+		if (v != NULL)
+			return new LazyVersionEdit(v); // set the delta level offsets
+		else
+			return new LazyVersionEdit();
+	}
 	return new BasicVersionEdit();
 }
 
@@ -233,8 +238,7 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
           table_cache_->Evict(number);
         }
         Log(options_.info_log, "Delete type=%d #%lld\n",
-            int(type),
-            static_cast<unsigned long long>(number));
+            int(type), static_cast<unsigned long long>(number));
         env_->DeleteFile(dbname_ + "/" + filenames[i]);
       }
     }
@@ -255,8 +259,7 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
           table_cache_->Evict(number);
 
           Log(options_.info_log, "Delete on Secondary type=%d #%lld\n",
-        		  int(type),
-        		  static_cast<unsigned long long>(number));
+        		  int(type), static_cast<unsigned long long>(number));
           env_->DeleteFile(std::string(hlsm::config::secondary_storage_path) + "/" + filenames[i]);
         }
       }
@@ -264,7 +267,7 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
   }
 }
 
-} // leveldb
+} // namespace leveldb
 
 namespace hlsm{
 namespace runtime {
@@ -319,7 +322,6 @@ int init() {
 
 	} else if (hlsm::config::mode.ishLSM()) {
 		full_mirror = false;
-		mirror_start_level = 6;
 		top_mirror_end_level = 1;
 		top_pure_mirror_end_level = 0;
 		use_cursor_compaction = true;
@@ -328,7 +330,8 @@ int init() {
 		meta_on_primary = false;
 		log_on_primary = false;
 		use_opq_thread = true;
-		two_phase_end_level = 5; // cursor doubles the #level; level starts at 0
+		two_phase_end_level = 5; // cursor (logical) level; level starts at 0
+		mirror_start_level = two_phase_end_level * 2;
 		leveldb::config::kMaxMemCompactLevel = 0; // do not write memtable to levels other than 0
 	}
 
