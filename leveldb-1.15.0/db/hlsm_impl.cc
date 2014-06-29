@@ -409,4 +409,10 @@ int prefetch_file(leveldb::RandomAccessFile* file, uint64_t size) {
 	return 0;
 }
 
+bool DeltaLevelMeta::is_valid_detla_meta() {
+	return start <= hlsm::runtime::delta_level_num &&
+		   clear <= hlsm::runtime::delta_level_num &&
+		   active <= hlsm::runtime::delta_level_num;
+}
+
 } // hlsm

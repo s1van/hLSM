@@ -330,6 +330,19 @@ struct DeltaLevelMeta{
 	uint32_t active;
 
 	DeltaLevelMeta(): start(0), clear(0), active(1) {}
+	inline void set_delta_meta(uint32_t start_, uint32_t clear_, uint32_t active_) {
+		start = start_;
+		clear = clear_;
+		active = active_;
+	}
+
+	inline void set_delta_meta(struct DeltaLevelMeta *src) {
+		start = src->start;
+		clear = src->clear;
+		active = src->active;
+	}
+
+	bool is_valid_detla_meta();
 };
 
 typedef struct DeltaLevelMeta delta_meta_t;

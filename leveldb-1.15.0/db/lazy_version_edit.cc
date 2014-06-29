@@ -188,8 +188,7 @@ Status LazyVersionEdit::DecodeFrom(const Slice& src) {
         	GetVarint32(&input, &active)) {
         	DEBUG_INFO(2, "level: %d, start: %u, clear: %u, active: %u\n"
         			, level, start, clear, active);
-        	hlsm::set_delta_meta(&(delta_meta_[level]),
-        			start, clear, active);
+        	delta_meta_[level].set_delta_meta(start, clear, active);
         	assert(start <= hlsm::runtime::delta_level_num &&
         		   clear <= hlsm::runtime::delta_level_num &&
         		   active <= hlsm::runtime::delta_level_num);

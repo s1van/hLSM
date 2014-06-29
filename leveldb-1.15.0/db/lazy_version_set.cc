@@ -102,9 +102,9 @@ class LazyVersionSet::Builder {
 
     // Update active delta level offset
     for (int i = 0; i < hlsm::runtime::kLogicalLevels; i++) {
-    	hlsm::set_delta_meta(&(vset_->delta_meta_[i]), &(edit->delta_meta_[i]) );
+    	vset_->delta_meta_[i].set_delta_meta(&(edit->delta_meta_[i]) );
     	debug_detla_meta((&(vset_->delta_meta_[i])) );
-    	assert(hlsm::is_valid_detla_meta(&(edit->delta_meta_[i]) ));
+    	assert(edit->delta_meta_[i].is_valid_detla_meta());
     }
 
     // Delete files

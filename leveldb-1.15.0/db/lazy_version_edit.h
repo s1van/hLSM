@@ -45,8 +45,8 @@ class LazyVersionEdit: public leveldb::VersionEdit {
 
   void SetDeltaLevels(hlsm::delta_meta_t meta[]) {
 	  for (int level = 0; level < hlsm::runtime::kLogicalLevels; level++) {
-		  hlsm::set_delta_meta(&delta_meta_[level], &meta[level]);
-		  assert(hlsm::is_valid_detla_meta( &(delta_meta_[level]) ));
+		  delta_meta_[level].set_delta_meta(&meta[level]);
+		  assert(delta_meta_[level].is_valid_detla_meta());
 	  }
   }
 

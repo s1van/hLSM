@@ -121,23 +121,6 @@ int init_opq_helpler();
 /*
  * DeltaLevelMeta
  */
-inline void set_delta_meta(delta_meta_t *meta, uint32_t start, uint32_t clear, uint32_t active) {
-	meta->start = start;
-	meta->clear = clear;
-	meta->active = active;
-}
-
-inline void set_delta_meta(delta_meta_t *dst, delta_meta_t *src) {
-	dst->start = src->start;
-	dst->clear = src->clear;
-	dst->active = src->active;
-}
-
-inline bool is_valid_detla_meta(delta_meta_t *meta) {
-	return meta->start <= hlsm::runtime::delta_level_num &&
-		   meta->clear <= hlsm::runtime::delta_level_num &&
-		   meta->active <= hlsm::runtime::delta_level_num;
-}
 
 inline uint32_t get_active_delta_level(delta_meta_t meta[], int llevel) {
 	return llevel * (hlsm::runtime::delta_level_num + 1) + 1 - meta[llevel].active;
