@@ -16,7 +16,7 @@
 namespace hlsm {
 namespace runtime {
 
-int init();
+int init(leveldb::Env*);
 int cleanup();
 int preload_metadata(leveldb::VersionSet*);
 } // runtime

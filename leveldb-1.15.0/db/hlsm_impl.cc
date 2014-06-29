@@ -287,11 +287,12 @@ int preload_metadata(leveldb::VersionSet* versions) {
 }
 
 
-int init() {
+int init(leveldb::Env* env_) {
 	if (hlsm::config::debug_file != NULL)
 		debug_fd = fopen(hlsm::config::debug_file, "w");
 	DEBUG_INFO(1, "debug_fd = %p\tstderr = %p\n", debug_fd, stderr);
 
+	hlsm::runtime::env_ = env_;
 	if (hlsm::config::mode.isDefault()) {
 
 	} else if (hlsm::config::mode.isFullMirror()) {

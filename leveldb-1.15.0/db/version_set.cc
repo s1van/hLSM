@@ -341,8 +341,6 @@ Status Version::Get(const ReadOptions& options,
                     const LookupKey& k,
                     std::string* value,
                     GetStats* stats) {
-  DEBUG_INFO(1, "k = %p, isize:%lu, usize: %lu, icmp: %p\n",
-		  &k, k.internal_key().size(), k.user_key().size(), BytewiseComparator());
   Slice ikey = k.internal_key();
   Slice user_key = k.user_key();
   const Comparator* ucmp = vset_->icmp_.user_comparator();

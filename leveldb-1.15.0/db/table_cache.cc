@@ -50,7 +50,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   EncodeFixed64(buf, file_number);
   Slice key(buf, sizeof(buf));
 
-  DEBUG_INFO(2, "file_number: %lu, sequential? %d\n", file_number, is_sequential);
+  DEBUG_INFO(3, "file_number: %lu, sequential? %d\n", file_number, is_sequential);
   *handle = cache_->Lookup(key);
   if (*handle == NULL) {
     std::string fname = TableFileName(dbname_, file_number);

@@ -33,6 +33,8 @@ char* debug_file = NULL;
 } //config
 
 namespace runtime {
+leveldb::Env* env_ = NULL;
+
 pthread_t *opq_helper = NULL;
 opq op_queue = NULL;
 

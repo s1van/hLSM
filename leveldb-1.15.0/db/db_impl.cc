@@ -1519,7 +1519,7 @@ DB::~DB() {
 Status DB::Open(const Options& options, const std::string& dbname,
                 DB** dbptr) {
   *dbptr = NULL;
-  hlsm::runtime::init();
+  hlsm::runtime::init(options.env);
 
   DBImpl* impl = new DBImpl(options, dbname);
   impl->mutex_.Lock();

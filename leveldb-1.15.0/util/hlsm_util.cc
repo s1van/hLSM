@@ -77,6 +77,7 @@ static void *opq_helper(void * arg) {
 		    	runtime::FileNameHash::drop(*fname);
 				assert(fclose(fp) == 0);
 				DEBUG_INFO(3, "MBufClose\tfp: %p\n", fp);
+				delete fname;
 
 			} else if (op->type == MTruncate) {
 				size_t size = op->size;	//file size
@@ -94,6 +95,7 @@ static void *opq_helper(void * arg) {
 				sfp = (WritableFile *) op->ptr1;	//file handler
 				Status s = sfp->Close();
 				DEBUG_INFO(2, "MClose\top: %p\tstatus: %s\n", op, s.ToString().c_str());
+				delete sfp;
 
 			} else if (op->type == MDelete) {
 				std::string *fname = (std::string*) (op->ptr1);
@@ -103,21 +105,30 @@ static void *opq_helper(void * arg) {
 
 			} else if (op->type == MCopyFile) {
 				std::string *fname = (std::string*) (op->ptr1);
-				copy_file(PRIMARY_TO_SECONDARY_FILE((*fname)).c_str(), fname->c_str());
-				DEBUG_INFO(2, "MCopyFile\tfname: %s\n", fname->c_str());
+				std::string sfname = PRIMARY_TO_SECONDARY_FILE((*fname));
+				bool file_exists = hlsm::runtime::env_->FileExists(sfname);
+				if(!file_exists) {
+					copy_file(sfname.c_str(), fname->c_str());
+				}
+				DEBUG_INFO(2, "MCopyFile\tfname: %s, exists: %d\n", fname->c_str(), file_exists);
 				delete fname;
 
 			} else if (op->type == MCopyDeletedFile) {
 				std::string *fname = (std::string*) (op->ptr1);
-				copy_file(PRIMARY_TO_SECONDARY_FILE((*fname)).c_str(), fname->c_str());
+				std::string sfname = PRIMARY_TO_SECONDARY_FILE((*fname));
+				bool file_exists = hlsm::runtime::env_->FileExists(sfname);
+				if(!file_exists) {
+					copy_file(sfname.c_str(), fname->c_str());
+				}
 				uint64_t fnum = op->offset; // just for convenience
-				DEBUG_INFO(2, "MCopyDeletedFile\tfname: %s\n", fname->c_str());
+				DEBUG_INFO(2, "MCopyDeletedFile\tfname: %s, exists: %d\n", fname->c_str(), file_exists);
 				delete fname;
 				hlsm::runtime::moving_tables_.erase(fnum);
 
 			} else if (op->type == MHalt) {
 				DEBUG_INFO(2, "MHalt\t#elem in Queue: %lu\n", OPQ_GET_LENGTH(op_queue));
 				if (OPQ_GET_LENGTH(op_queue) == 0) { //due to multi-threading, it may not be empty
+					free(op);
 					break;
 				} else {
 					OPQ_ADD_HALT(hlsm::runtime::op_queue);
@@ -333,6 +344,7 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
     if (file_ != NULL) {
       Close();
     }
+    delete fp_;
   }
 
   Status FullMirror_PosixWritableFile::Append(const Slice& data) {

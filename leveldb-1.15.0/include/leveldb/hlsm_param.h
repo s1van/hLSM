@@ -39,6 +39,8 @@ extern char* debug_file;// where to dump the debug info
 } // config
 
 namespace runtime {
+extern leveldb::Env* env_;
+
 extern pthread_t *opq_helper;
 extern opq op_queue;
 
