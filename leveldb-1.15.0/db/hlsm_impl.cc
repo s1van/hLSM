@@ -153,15 +153,17 @@ RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
 		}
 		ret = (rep->primary_ != NULL)? rep->primary_ : rep->secondary_;
 	} else {
-		if (rep->secondary_ == NULL) {
-			std::string sname = PRIMARY_TO_SECONDARY_FILE(rep->primary_->GetFileName());
-			if (env->FileExists(sname)) {
-				Status s = env->NewRandomAccessFile(sname, &(rep->secondary_));
-				if (!s.ok()) {
-					DEBUG_INFO(2, "File exists, but can not be opened, %s\n", sname.c_str());
-					rep->secondary_ = NULL;
-				}
+		if (hlsm::config::secondary_storage_path != NULL) {
+			if (rep->secondary_ == NULL) {
+				std::string sname = PRIMARY_TO_SECONDARY_FILE(rep->primary_->GetFileName());
+				if (env->FileExists(sname)) {
+					Status s = env->NewRandomAccessFile(sname, &(rep->secondary_));
+					if (!s.ok()) {
+						DEBUG_INFO(2, "File exists, but can not be opened, %s\n", sname.c_str());
+						rep->secondary_ = NULL;
+					}
 
+				}
 			}
 		}
 		ret = (rep->secondary_ != NULL)? rep->secondary_ : rep->primary_;
