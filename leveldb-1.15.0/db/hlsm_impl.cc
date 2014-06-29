@@ -353,6 +353,16 @@ int cleanup() {
 } // runtime
 
 
+/*
+ * hlsm_type.h
+ */
+
+bool DeltaLevelMeta::is_valid_detla_meta() {
+	return start <= hlsm::runtime::delta_level_num &&
+		   clear <= hlsm::runtime::delta_level_num &&
+		   active <= hlsm::runtime::delta_level_num;
+}
+
 int TableLevel::get(uint64_t key){
 	if (mapping_.find(key) == mapping_.end())
 		return -1;
@@ -391,6 +401,10 @@ bool TableLevel::withinPureMirroredLevel(uint64_t key){
 			level <= runtime::top_pure_mirror_end_level); // delete obsolete level 0 file on secondary
 }
 
+/*
+ * hlsm_impl.h
+ */
+
 int delete_secondary_table(leveldb::Env* const env, uint64_t number) {
 	if (hlsm::config::secondary_storage_path == NULL)
 		return 0;
@@ -407,12 +421,6 @@ int prefetch_file(leveldb::RandomAccessFile* file, uint64_t size) {
 	leveldb::Status s = file->Read(0, size, &buffer_input, buffer_space);
 	free(buffer_space);
 	return 0;
-}
-
-bool DeltaLevelMeta::is_valid_detla_meta() {
-	return start <= hlsm::runtime::delta_level_num &&
-		   clear <= hlsm::runtime::delta_level_num &&
-		   active <= hlsm::runtime::delta_level_num;
 }
 
 } // hlsm
