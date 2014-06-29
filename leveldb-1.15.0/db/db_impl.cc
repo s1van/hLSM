@@ -536,8 +536,13 @@ void DBImpl::CompactMemTable() {
   VersionEdit &edit = (*NewVersionEdit(versions_));
   Version* base = versions_->current();
   base->Ref();
+  Version* current_lazy = NULL;
+  CALL_IF_HLSM(current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy());
+
+  CALL_IF_HLSM(current_lazy->Ref());
   Status s = WriteLevel0Table(imm_, &edit, base);
   base->Unref();
+  CALL_IF_HLSM(current_lazy->Unref());
 
   DEBUG_INFO(1, "#Files of Level 0: %d\n", base->NumFiles(0));
 
@@ -1086,6 +1091,7 @@ static void CleanupIteratorState(void* arg1, void* arg2) {
 Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
                                       SequenceNumber* latest_snapshot,
                                       uint32_t* seed, bool is_sequential) {
+  DEBUG_INFO(1, "sequential? %d\n", is_sequential);
   IterState* cleanup = new IterState;
   mutex_.Lock();
   *latest_snapshot = versions_->LastSequence();
@@ -1144,6 +1150,10 @@ Status DBImpl::Get(const ReadOptions& options,
   if (imm != NULL) imm->Ref();
   current->Ref();
 
+  Version* current_lazy = NULL;
+  CALL_IF_HLSM(current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy());
+  CALL_IF_HLSM(current_lazy->Ref());
+
   bool have_stat_update = false;
   Version::GetStats stats;
 
@@ -1157,7 +1167,12 @@ Status DBImpl::Get(const ReadOptions& options,
     } else if (imm != NULL && imm->Get(lkey, value, &s)) {
       // Done
     } else {
-      s = current->Get(options, lkey, value, &stats);
+      if (hlsm::read_from_primary(false) || !hlsm::config::mode.ishLSM()) {
+    	  s = current->Get(options, lkey, value, &stats);
+      } else {
+    	  Version* current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy();
+    	  s = current_lazy->Get(options, lkey, value, &stats);
+      }
       have_stat_update = true;
     }
     mutex_.Lock();
@@ -1169,6 +1184,8 @@ Status DBImpl::Get(const ReadOptions& options,
   mem->Unref();
   if (imm != NULL) imm->Unref();
   current->Unref();
+  CALL_IF_HLSM(current_lazy->Unref());
+
   return s;
 }
 
@@ -1520,6 +1537,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
       impl->log_ = new log::Writer(lfile);
       s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }
+
     if (s.ok()) {
       int msl = hlsm::runtime::mirror_start_level;
       hlsm::runtime::mirror_start_level = -1;

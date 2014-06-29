@@ -29,13 +29,13 @@ class LazyVersionEdit: public leveldb::VersionEdit {
     f.smallest = smallest;
     f.largest = largest;
     new_files_lazy_.push_back(std::make_pair(level, f));
-    DEBUG_INFO(2,"size: %lu fnum: %lu\tlevel: %d\tfp: %p\n", file_size, file, level, &f);
+    DEBUG_INFO(3,"size: %lu fnum: %lu\tlevel: %d\tfp: %p\n", file_size, file, level, &f);
   }
 
   // Delete the specified "file" from the specified "level".
   void DeleteLazyFile(int level, uint64_t file) {
 	deleted_files_lazy_.insert(std::make_pair(level, file));
-	DEBUG_INFO(2,"fnum: %lu\tlevel: %d\n", file, level);
+	DEBUG_INFO(3,"fnum: %lu\tlevel: %d\n", file, level);
   }
 
   void EncodeTo(std::string* dst) const;

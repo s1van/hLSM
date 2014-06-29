@@ -12,10 +12,10 @@
 #define PRIMARY_TO_SECONDARY_FILE(fname_) (( std::string(hlsm::config::secondary_storage_path) + fname_.substr(fname_.find_last_of("/")) ))
 #define SECONDARY_TO_PRIMARY_FILE(fname_) (( std::string(hlsm::config::primary_storage_path) + fname_.substr(fname_.find_last_of("/")) ))
 
-#define CALL_IF_HLSM(do_) do { if(hlsm::config::mode.ishLSM()) {do_;} } while(0)
+#define CALL_IF_HLSM(do_) do { if(hlsm::config::mode.ishLSM()) { DEBUG_INFO(3, "call if hlsm\n"); do_;} } while(0)
 
 #define debug_detla_meta(meta_) \
-	DEBUG_INFO(2, "start: %u, clear: %u, active: %u\n", \
+	DEBUG_INFO(3, "start: %u, clear: %u, active: %u\n", \
 			meta_->start, meta_->clear, meta_->active);
 
 namespace hlsm {

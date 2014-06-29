@@ -93,7 +93,7 @@ static void *opq_helper(void * arg) {
 			} else if (op->type == MClose) {
 				sfp = (WritableFile *) op->ptr1;	//file handler
 				Status s = sfp->Close();
-				DEBUG_INFO(3, "MClose\top: %p\tstatus: %s\n", op, s.ToString().c_str());
+				DEBUG_INFO(2, "MClose\top: %p\tstatus: %s\n", op, s.ToString().c_str());
 
 			} else if (op->type == MDelete) {
 				std::string *fname = (std::string*) (op->ptr1);
@@ -111,7 +111,7 @@ static void *opq_helper(void * arg) {
 				std::string *fname = (std::string*) (op->ptr1);
 				copy_file(PRIMARY_TO_SECONDARY_FILE((*fname)).c_str(), fname->c_str());
 				uint64_t fnum = op->offset; // just for convenience
-				DEBUG_INFO(2, "MCopyFile\tfname: %s\n", fname->c_str());
+				DEBUG_INFO(2, "MCopyDeletedFile\tfname: %s\n", fname->c_str());
 				delete fname;
 				hlsm::runtime::moving_tables_.erase(fnum);
 
@@ -241,7 +241,7 @@ class PosixBufferFile : public leveldb::WritableFile {
  	 : filename_(fname), file_(f),
        file_offset_(0){
 		buffer_size_ = 4<<20;
-		base_ = (char*) memalign(BLKSIZE,buffer_size_);
+		base_ = (char*) memalign(BLKSIZE, buffer_size_);
 		dst_ = base_;
 		limit_ = base_ + buffer_size_;
 		fd_ = fileno(f);

@@ -9,6 +9,7 @@
 #include "db/filename.h"
 #include "db/log_reader.h"
 #include "db/log_writer.h"
+#include "db/lazy_version_set.h"
 #include "db/memtable.h"
 #include "db/table_cache.h"
 #include "leveldb/env.h"
@@ -71,13 +72,13 @@ std::string IntSetToString(const std::set<uint64_t>& s) {
 
 Version::~Version() {
   assert(refs_ == 0);
-
+  DEBUG_INFO(2, "refs = %d, Version: %p\n", refs_, this);
   // Remove from linked list
   prev_->next_ = next_;
   next_->prev_ = prev_;
 
   // Drop references to files
-  for (int level = 0; level < config::kNumLevels; level++) {
+  for (int level = 0; level < level_num_; level++) {
     for (size_t i = 0; i < files_[level].size(); i++) {
       FileMetaData* f = files_[level][i];
       assert(f->refs > 0);
@@ -250,7 +251,7 @@ void Version::AddIterators(const ReadOptions& options,
   // For levels > 0, we can use a concatenating iterator that sequentially
   // walks through the non-overlapping files in the level, opening them
   // lazily.
-  for (int level = 1; level < config::kNumLevels; level++) {
+  for (int level = 1; level < level_num_; level++) {
     if (!files_[level].empty()) {
       iters->push_back(NewConcatenatingIterator(options, level, is_sequential));
     }
@@ -317,7 +318,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key,
   }
 
   // Search other levels.
-  for (int level = 1; level < config::kNumLevels; level++) {
+  for (int level = 1; level < level_num_; level++) {
     size_t num_files = files_[level].size();
     if (num_files == 0) continue;
 
@@ -340,6 +341,8 @@ Status Version::Get(const ReadOptions& options,
                     const LookupKey& k,
                     std::string* value,
                     GetStats* stats) {
+  DEBUG_INFO(1, "k = %p, isize:%lu, usize: %lu, icmp: %p\n",
+		  &k, k.internal_key().size(), k.user_key().size(), BytewiseComparator());
   Slice ikey = k.internal_key();
   Slice user_key = k.user_key();
   const Comparator* ucmp = vset_->icmp_.user_comparator();
@@ -355,7 +358,7 @@ Status Version::Get(const ReadOptions& options,
   // in an smaller level, later levels are irrelevant.
   std::vector<FileMetaData*> tmp;
   FileMetaData* tmp2;
-  for (int level = 0; level < config::kNumLevels; level++) {
+  for (int level = 0; level < level_num_; level++) {
     size_t num_files = files_[level].size();
     if (num_files == 0) continue;
 
@@ -491,6 +494,7 @@ bool Version::RecordReadSample(Slice internal_key) {
 
 void Version::Ref() {
   ++refs_;
+  DEBUG_INFO(3, "refs = %d, Version: %p\n", refs_, this);
 }
 
 void Version::Unref() {
@@ -500,6 +504,7 @@ void Version::Unref() {
   if (refs_ == 0) {
     delete this;
   }
+  DEBUG_INFO(3, "refs = %d, Version: %p\n", refs_, this);
 }
 
 bool Version::OverlapInLevel(int level,
@@ -523,7 +528,7 @@ int Version::PickLevelForMemTableOutput(
       if (OverlapInLevel(level + 1, &smallest_user_key, &largest_user_key)) {
         break;
       }
-      if (level + 2 < config::kNumLevels) {
+      if (level + 2 < level_num_) {
         // Check that file does not overlap too many grandparent bytes.
         GetOverlappingInputs(level + 2, &start, &limit, &overlaps);
         const int64_t sum = TotalFileSize(overlaps);
@@ -544,7 +549,7 @@ void Version::GetOverlappingInputs(
     const InternalKey* end,
     std::vector<FileMetaData*>* inputs) {
   assert(level >= 0);
-  assert(level < config::kNumLevels);
+  assert(level < level_num_);
   inputs->clear();
   Slice user_begin, user_end;
   if (begin != NULL) {
@@ -583,7 +588,7 @@ void Version::GetOverlappingInputs(
 
 std::string Version::DebugString() const {
   std::string r;
-  for (int level = 0; level < config::kNumLevels; level++) {
+  for (int level = 0; level < level_num_; level++) {
     // E.g.,
     //   --- level 1 ---
     //   17:123['a' .. 'd']
@@ -807,6 +812,8 @@ BasicVersionSet::BasicVersionSet(const std::string& dbname,
                        const InternalKeyComparator* cmp)
     : VersionSet(dbname, options, table_cache, cmp) {
   AppendVersion(new Version(this));
+  DEBUG_INFO(1, "cmp = %p (icmp = %p), %s; dbname = %s\n",
+  		  cmp, icmp_.user_comparator(), cmp->Name(), dbname.c_str());
 }
 
 BasicVersionSet::~BasicVersionSet() {

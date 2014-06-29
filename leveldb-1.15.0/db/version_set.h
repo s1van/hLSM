@@ -22,6 +22,7 @@
 #include "db/version_edit.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
+#include "leveldb/hlsm_debug.h"
 
 namespace leveldb {
 
@@ -90,6 +91,7 @@ class Version {
   // under live iterators)
   void Ref();
   void Unref();
+  int GetRef() {return refs_;}
 
   void GetOverlappingInputs(
       int level,
@@ -140,6 +142,7 @@ class Version {
   Version* next_;               // Next version in linked list
   Version* prev_;               // Previous version in linked list
   int refs_;                    // Number of live refs to this version
+  int level_num_;
 
   // List of files per level
   std::vector<FileMetaData*> *files_;
@@ -159,7 +162,8 @@ class Version {
         file_to_compact_(NULL),
         file_to_compact_level_(-1),
         compaction_score_(-1),
-        compaction_level_(-1) {
+        compaction_level_(-1),
+        level_num_(level) {
 	  files_ = new std::vector<FileMetaData*>[level];
   }
 

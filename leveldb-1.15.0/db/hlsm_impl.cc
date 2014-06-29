@@ -38,9 +38,9 @@ int Version::PreloadMetadata(int max_level) {
 		FileMetaData* const* files = &files_[level][0];
 		DEBUG_INFO(1, "Level %d:\t", level);
 		for (uint32_t i = 0; i < num_files; i++) {
-			Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
 			hlsm::runtime::table_level.add(files[i]->number, level);
 			DEBUG_PRINT(1, "%lu[%d]\t", files[i]->number, hlsm::runtime::table_level.get(files[i]->number));
+			Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
 		}
 		DEBUG_PRINT(1, "\n");
 	}
@@ -112,6 +112,7 @@ VersionEdit* NewVersionEdit (VersionSet* v) {
 
 VersionSet *NewVersionSet(const std::string& dbname, const Options* options,
         TableCache* table_cache, const InternalKeyComparator* cmp) {
+	DEBUG_INFO(1, "cmp = %p, %s\n", cmp, cmp->Name());
 	if (hlsm::config::mode.ishLSM() )
 		return new LazyVersionSet(dbname, options, table_cache, cmp);
 	return new BasicVersionSet(dbname, options, table_cache, cmp);
@@ -169,7 +170,8 @@ RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
 		ret = (rep->secondary_ != NULL)? rep->secondary_ : rep->primary_;
 	}
 
-	DEBUG_INFO(2, "ret = %p, primary = %p, secondary = %p\n", ret, rep->primary_, rep->secondary_);
+	DEBUG_INFO(3, "ret = %p, primary = %p, secondary = %p, file: %s\n",
+			ret, rep->primary_, rep->secondary_, ret->GetFileName().c_str());
 	assert(ret != NULL);
 	return ret;
 }
@@ -334,7 +336,7 @@ int init() {
 		top_pure_mirror_end_level = 0;
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
-		random_read_from_primary = true;
+		random_read_from_primary = false;
 		meta_on_primary = false;
 		log_on_primary = false;
 		use_opq_thread = true;
@@ -397,6 +399,7 @@ int TableLevel::remove(uint64_t key){
 
 bool TableLevel::withinMirroredLevel(uint64_t key){
 	int level = get(key);
+	if (level == -1) return false;
 	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
 	return (level >= runtime::mirror_start_level ||
 		level <= runtime::top_mirror_end_level); // <=1 for hLSM-tree 2-phase compaction
@@ -404,6 +407,7 @@ bool TableLevel::withinMirroredLevel(uint64_t key){
 
 bool TableLevel::withinPureMirroredLevel(uint64_t key){
 	int level = get(key);
+	if (level == -1) return false;
 	DEBUG_INFO(2, "file number: %lu\tlevel: %d\n", key, level);
 	return (level >= runtime::mirror_start_level ||
 			level <= runtime::top_pure_mirror_end_level); // delete obsolete level 0 file on secondary
