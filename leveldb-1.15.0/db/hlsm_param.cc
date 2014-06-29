@@ -30,6 +30,8 @@ bool lazy_sync_on_secondary = true;
 
 int debug_level = 0;
 char* debug_file = NULL;
+
+int bloom_bits_use = -1;
 } //config
 
 namespace runtime {

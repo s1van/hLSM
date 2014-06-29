@@ -1203,6 +1203,8 @@ int main(int argc, char** argv) {
       FLAGS_cache_size = n;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
+    } else if (sscanf(argv[i], "--bloom_bits_use=%d%c", &n, &junk) == 1) {
+      hlsm::config::bloom_bits_use = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {

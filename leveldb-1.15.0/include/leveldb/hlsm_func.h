@@ -156,6 +156,17 @@ inline std::vector<uint32_t> get_obsolete_delta_levels(delta_meta_t meta[], int 
 	return levels;
 }
 
+/*
+ * Bloom Filter
+ */
+inline size_t get_bloom_filter_probe_num (int bits_per_key) {
+	int raw_probe_num = (hlsm::config::bloom_bits_use < bits_per_key &&
+			hlsm::config::bloom_bits_use > 0)?
+			hlsm::config::bloom_bits_use : bits_per_key;
+	// We intentionally round down to reduce probing cost a little bit
+	return static_cast<size_t>(raw_probe_num * 0.69);  // 0.69 =~ ln(2)
+}
+
 } // hlsm
 
 #endif

@@ -36,6 +36,8 @@ extern bool lazy_sync_on_secondary;
 
 extern int debug_level;	// default value 0 is; info whose level is smaller or equal to debug_level will be displayed
 extern char* debug_file;// where to dump the debug info
+
+extern int bloom_bits_use; // allow user to probe less bits in bloom filter
 } // config
 
 namespace runtime {
