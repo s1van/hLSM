@@ -78,7 +78,6 @@ class PosixSequentialFile: public SequentialFile {
 // pread() based random-access
 class PosixRandomAccessFile: public RandomAccessFile {
  private:
-  std::string filename_;
   int fd_;
 
  public:
@@ -153,7 +152,6 @@ class MmapLimiter {
 // mmap() based random-access
 class PosixMmapReadableFile: public RandomAccessFile {
  private:
-  std::string filename_;
   void* mmapped_region_;
   size_t length_;
   MmapLimiter* limiter_;
