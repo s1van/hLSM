@@ -82,7 +82,7 @@ class PosixRandomAccessFile: public RandomAccessFile {
 
  public:
   PosixRandomAccessFile(const std::string& fname, int fd)
-      : filename_(fname), fd_(fd) {
+      : fd_(fd) { filename_ = fname;
     DEBUG_INFO(2, "%s\n", fname.c_str());
   }
   virtual ~PosixRandomAccessFile() { close(fd_); }
@@ -160,8 +160,8 @@ class PosixMmapReadableFile: public RandomAccessFile {
   // base[0,length-1] contains the mmapped contents of the file.
   PosixMmapReadableFile(const std::string& fname, void* base, size_t length,
                         MmapLimiter* limiter)
-      : filename_(fname), mmapped_region_(base), length_(length),
-        limiter_(limiter) {
+      : mmapped_region_(base), length_(length),
+        limiter_(limiter) { filename_ = fname;
   }
 
   virtual ~PosixMmapReadableFile() {

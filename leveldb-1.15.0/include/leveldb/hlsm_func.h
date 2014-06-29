@@ -8,7 +8,9 @@
 
 
 #define FILE_HAS_SUFFIX(fname_, str_) ((fname_.find(str_) != std::string::npos))
+#define HAS_SUBSTR(str_, sstr_) ((str_.find(sstr_) != std::string::npos))
 #define PRIMARY_TO_SECONDARY_FILE(fname_) (( std::string(hlsm::config::secondary_storage_path) + fname_.substr(fname_.find_last_of("/")) ))
+#define SECONDARY_TO_PRIMARY_FILE(fname_) (( std::string(hlsm::config::primary_storage_path) + fname_.substr(fname_.find_last_of("/")) ))
 
 #define CALL_IF_HLSM(do_) do { if(hlsm::config::mode.ishLSM()) {do_;} } while(0)
 
@@ -22,6 +24,10 @@ inline static int table_name_to_number(const std::string& fname) {
 	size_t n = fname.find("ldb");
 	size_t m = fname.find_last_of("/");
 	return std::atoi(fname.substr(m+1, n-1).c_str());
+}
+
+inline bool is_primary_file(const std::string& fname) {
+	return HAS_SUBSTR(fname, hlsm::config::primary_storage_path);
 }
 
 inline static bool do_prefetch (int is_sequential) {

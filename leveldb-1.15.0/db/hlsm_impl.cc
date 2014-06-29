@@ -4,6 +4,7 @@
 #include "leveldb/hlsm.h"
 #include "leveldb/table.h"
 #include "leveldb/options.h"
+#include "leveldb/env.h"
 
 #include "port/port_posix.h"
 #include "table/filter_block.h"
@@ -116,63 +117,68 @@ VersionSet *NewVersionSet(const std::string& dbname, const Options* options,
 	return new BasicVersionSet(dbname, options, table_cache, cmp);
 }
 
+/*
+ * Table extension
+ */
+
 struct Table::Rep {
   Options options;
   Status status;
-  RandomAccessFile* file;
   uint64_t cache_id;
   FilterBlockReader* filter;
   const char* filter_data;
 
   RandomAccessFile* primary_;
-  std::string sfname_;
-  RandomAccessFile* secondary_; // file may not exist at the beginning, if so, use sfname to open later
-  bool should_read_from_secondary; // useful when is_sequential is not available
+  RandomAccessFile* secondary_;
 
   BlockHandle metaindex_handle;  // Handle to metaindex_block: saved from footer
   Block* index_block;
 };
 
-/*
- *  DO:	direct rep_->file to secondary or primary
- * PRE:	rep_ must be initialized in advance
- *  IN:	is_sequential == -1 implies that pattern is unknown
- */
-//ToDO: remove the assumption that no file is accessed both randomly and sequentially at the same time
-int Table::SetFileDescriptor(int is_sequential) {
-	rep_->file = rep_->primary_;
-	if (is_sequential == - 1) { // unknown pattern
-		if (rep_->should_read_from_secondary)
-			if (rep_->secondary_ != NULL) {
-				rep_->file = rep_->secondary_;
-			} else {
-				if (!hlsm::runtime::FileNameHash::inuse(rep_->sfname_)) { // file is written right now
-					Status s = rep_->options.env->NewRandomAccessFile(rep_->sfname_, &(rep_->secondary_));
-					rep_->file = rep_->secondary_;
+RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
+	assert(rep->primary_ != NULL || rep->secondary_ != NULL);
+	RandomAccessFile* ret = NULL;
+	Env* env = rep->options.env;
+	if(hlsm::read_from_primary(is_sequential)) {
+		if (rep->primary_ == NULL) {
+			std::string pname = SECONDARY_TO_PRIMARY_FILE(rep->secondary_->GetFileName());
+			if (env->FileExists(pname)) {
+				Status s = env->NewRandomAccessFile(pname, &(rep->primary_));
+				if (!s.ok()) {
+					DEBUG_INFO(2, "File exists, but can not be opened, %s\n", pname.c_str());
+					rep->primary_ = NULL;
 				}
-			}
-	} else {
-		if (hlsm::read_from_primary(is_sequential)) {
-			rep_->file = rep_->primary_;
-			rep_->should_read_from_secondary = false;
-		} else if (rep_->secondary_ != NULL) {
-			rep_->file = rep_->secondary_;
-		} else { // need to open the file
-			if (rep_->sfname_ != NULL) {
-				if (hlsm::is_mirrored_write(rep_->sfname_)) {
-					rep_->should_read_from_secondary = true;
-					if (!hlsm::runtime::FileNameHash::inuse(rep_->sfname_)) { // file is written right now
-						Status s = rep_->options.env->NewRandomAccessFile(rep_->sfname_, &(rep_->secondary_));
-						rep_->file = rep_->secondary_;
-					}
-				}
+
 			}
 		}
+		ret = (rep->primary_ != NULL)? rep->primary_ : rep->secondary_;
+	} else {
+		if (rep->secondary_ == NULL) {
+			std::string sname = PRIMARY_TO_SECONDARY_FILE(rep->primary_->GetFileName());
+			if (env->FileExists(sname)) {
+				Status s = env->NewRandomAccessFile(sname, &(rep->secondary_));
+				if (!s.ok()) {
+					DEBUG_INFO(2, "File exists, but can not be opened, %s\n", sname.c_str());
+					rep->secondary_ = NULL;
+				}
+
+			}
+		}
+		ret = (rep->secondary_ != NULL)? rep->secondary_ : rep->primary_;
 	}
 
-	DEBUG_INFO(3, "is_sequential: %d\tsfname: %s\tfile: %p\tprimary: %p\tsecondary:%p\tinuse: %d\tmirrored: %d\n",
-			is_sequential, rep_->sfname_.c_str(), rep_->file, rep_->primary_, rep_->secondary_,
-			hlsm::runtime::FileNameHash::inuse(rep_->sfname_), hlsm::is_mirrored_write(rep_->sfname_));
+	DEBUG_INFO(2, "ret = %p, primary = %p, secondary = %p\n", ret, rep->primary_, rep->secondary_);
+	assert(ret != NULL);
+	return ret;
+}
+
+
+
+int Table::PrefetchTable(leveldb::RandomAccessFile* file, uint64_t size) {
+	leveldb::Slice buffer_input;
+	char *buffer_space = (char*)malloc(size);
+	leveldb::Status s = file->Read(0, size, &buffer_input, buffer_space);
+	free(buffer_space);
 	return 0;
 }
 
@@ -414,13 +420,5 @@ int delete_secondary_table(leveldb::Env* const env, uint64_t number) {
 	return 0;
 }
 
-
-int prefetch_file(leveldb::RandomAccessFile* file, uint64_t size) {
-	leveldb::Slice buffer_input;
-	char *buffer_space = (char*)malloc(size);
-	leveldb::Status s = file->Read(0, size, &buffer_input, buffer_space);
-	free(buffer_space);
-	return 0;
-}
 
 } // hlsm

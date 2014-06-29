@@ -67,7 +67,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       std::string sfname = "";
       if (hlsm::config::secondary_storage_path != NULL)
     	  sfname = TableFileName(hlsm::config::secondary_storage_path, file_number);
-      s = Table::Open(*options_, file, file_size, &table, sfname, is_sequential);
+      s = Table::Open(*options_, file, file_size, &table, is_sequential);
     }
 
     if (!s.ok()) {
@@ -101,9 +101,8 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 
   Table* table;
   table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
-  table->SetFileDescriptor(is_sequential);
 
-  Iterator* result = table->NewIterator(options);
+  Iterator* result = table->NewIterator(options, is_sequential);
   result->RegisterCleanup(&UnrefEntry, cache_, handle);
 
   if (tableptr != NULL) {
@@ -122,8 +121,7 @@ Status TableCache::Get(const ReadOptions& options,
   Status s = FindTable(file_number, file_size, &handle);
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
-    t->SetFileDescriptor(false);
-    s = t->InternalGet(options, k, arg, saver);
+    s = t->InternalGet(options, k, arg, saver, false);
     cache_->Release(handle);
   }
   return s;

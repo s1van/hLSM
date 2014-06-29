@@ -26,17 +26,19 @@ struct Table::Rep {
     delete index_block;
   }
 
+  Rep(){
+	  primary_ = NULL;
+	  secondary_ = NULL;
+  }
+
   Options options;
   Status status;
-  RandomAccessFile* file;
   uint64_t cache_id;
   FilterBlockReader* filter;
   const char* filter_data;
 
   RandomAccessFile* primary_;
-  std::string sfname_;
-  RandomAccessFile* secondary_; // file may not exist at the beginning, if so, use sfname to open later
-  bool should_read_from_secondary;
+  RandomAccessFile* secondary_;
 
   BlockHandle metaindex_handle;  // Handle to metaindex_block: saved from footer
   Block* index_block;
@@ -45,35 +47,11 @@ struct Table::Rep {
 Status Table::Open(const Options& options,
                    RandomAccessFile* file,
                    uint64_t size,
-                   Table** table, std::string sfname, bool is_sequential) {
+                   Table** table, bool is_sequential) {
 
-  RandomAccessFile* f = file;
-  RandomAccessFile* secondary_ = NULL;
-  bool should_read_from_secondary = false;
-  // initialize file descriptor for sfname on secondary store
-  if (!sfname.empty()) {
-	  if (hlsm::is_mirrored_write(sfname)) {
-		  DEBUG_INFO(2, "sfname: %s\tinuse: %d\n",
-				  sfname.c_str(), hlsm::runtime::FileNameHash::inuse(sfname));
-		  if (!hlsm::runtime::FileNameHash::inuse(sfname)) { // file is written right now
-			  Status s = options.env->NewRandomAccessFile(sfname, &secondary_);
-			  DEBUG_INFO(2, "secondary fd: %p\n", secondary_);
-			  if (!hlsm::read_from_primary(is_sequential)) {
-				  f = secondary_;
-				  should_read_from_secondary = true;
-			  }
-		  } else {
-			  if (!hlsm::read_from_primary(is_sequential)) {
-				  should_read_from_secondary = true;
-			  }
-		  }
-	  }
-	  DEBUG_INFO(2, "%s\t%d\t%d\n", sfname.c_str(), is_sequential, should_read_from_secondary);
-  }
-
-
+  DEBUG_INFO(2, "filename: %s\n", file->GetFileName().c_str());
   if (hlsm::do_prefetch(is_sequential)) { // pre-fetch the entire table
-	  hlsm::prefetch_file(f, size);
+	  PrefetchTable(file, size);
 	  //ToDo: prefetch the table into the block cache
   }
 
@@ -84,7 +62,7 @@ Status Table::Open(const Options& options,
 
   char footer_space[Footer::kEncodedLength];
   Slice footer_input;
-  Status s = f->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
+  Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
                         &footer_input, footer_space);
   if (!s.ok()) return s;
 
@@ -96,7 +74,7 @@ Status Table::Open(const Options& options,
   BlockContents contents;
   Block* index_block = NULL;
   if (s.ok()) {
-    s = ReadBlock(f, ReadOptions(), footer.index_handle(), &contents);
+    s = ReadBlock(file, ReadOptions(), footer.index_handle(), &contents);
     if (s.ok()) {
       index_block = new Block(contents);
       DEBUG_INFO(2, "table size: %lu\tindex size: %lu\n", size, contents.data.size());
@@ -108,17 +86,17 @@ Status Table::Open(const Options& options,
     // ready to serve requests.
     Rep* rep = new Table::Rep;
     rep->options = options;
-    rep->file = f;
     rep->metaindex_handle = footer.metaindex_handle();
     rep->index_block = index_block;
     rep->cache_id = (options.block_cache ? options.block_cache->NewId() : 0);
     rep->filter_data = NULL;
     rep->filter = NULL;
 
-    rep->primary_ = file;
-    rep->secondary_ = secondary_;
-    rep->should_read_from_secondary = should_read_from_secondary;
-    rep->sfname_ = sfname;
+    if (hlsm::is_primary_file(file->GetFileName())) {
+    	rep->primary_ = file;
+    } else {
+    	rep->secondary_ = file;
+    }
 
     *table = new Table(rep);
     (*table)->ReadMeta(footer);
@@ -138,7 +116,7 @@ void Table::ReadMeta(const Footer& footer) {
   // it is an empty block.
   ReadOptions opt;
   BlockContents contents;
-  if (!ReadBlock(rep_->file, opt, footer.metaindex_handle(), &contents).ok()) {
+  if (!ReadBlock(PickFileHandler(rep_), opt, footer.metaindex_handle(), &contents).ok()) {
     // Do not propagate errors since meta info is not needed for operation
     return;
   }
@@ -167,7 +145,7 @@ void Table::ReadFilter(const Slice& filter_handle_value) {
   // requiring checksum verification in Table::Open.
   ReadOptions opt;
   BlockContents block;
-  if (!ReadBlock(rep_->file, opt, filter_handle, &block).ok()) {
+  if (!ReadBlock(PickFileHandler(rep_), opt, filter_handle, &block).ok()) {
     return;
   }
   DEBUG_INFO(2, "filter size: %lu\n", block.data.size());
@@ -223,7 +201,7 @@ Iterator* Table::BlockReader(void* arg,
       if (cache_handle != NULL) {
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
       } else {
-        s = ReadBlock(table->rep_->file, options, handle, &contents);
+        s = ReadBlock(PickFileHandler(table->rep_, is_sequential), options, handle, &contents);
         if (s.ok()) {
           block = new Block(contents);
           if (contents.cachable && options.fill_cache) {
@@ -233,7 +211,7 @@ Iterator* Table::BlockReader(void* arg,
         }
       }
     } else {
-      s = ReadBlock(table->rep_->file, options, handle, &contents);
+      s = ReadBlock(PickFileHandler(table->rep_, is_sequential), options, handle, &contents);
       if (s.ok()) {
         block = new Block(contents);
       }
@@ -254,15 +232,15 @@ Iterator* Table::BlockReader(void* arg,
   return iter;
 }
 
-Iterator* Table::NewIterator(const ReadOptions& options) const {
+Iterator* Table::NewIterator(const ReadOptions& options, bool is_sequential) const {
   return NewTwoLevelIterator(
       rep_->index_block->NewIterator(rep_->options.comparator),
-      &Table::BlockReader, const_cast<Table*>(this), options);
+      &Table::BlockReader, const_cast<Table*>(this), options, is_sequential);
 }
 
 Status Table::InternalGet(const ReadOptions& options, const Slice& k,
                           void* arg,
-                          void (*saver)(void*, const Slice&, const Slice&)) {
+                          void (*saver)(void*, const Slice&, const Slice&), bool is_sequential) {
   Status s;
   Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
   iiter->Seek(k);
@@ -275,7 +253,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
         !filter->KeyMayMatch(handle.offset(), k)) {
       // Not found
     } else {
-      Iterator* block_iter = BlockReader(this, options, iiter->value());
+      Iterator* block_iter = BlockReader(this, options, iiter->value(), is_sequential);
       block_iter->Seek(k);
       if (block_iter->Valid()) {
         (*saver)(arg, block_iter->key(), block_iter->value());

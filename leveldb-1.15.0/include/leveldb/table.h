@@ -38,14 +38,14 @@ class Table {
   static Status Open(const Options& options,
                      RandomAccessFile* file,
                      uint64_t file_size,
-                     Table** table, std::string sfname = "", bool is_sequential = false);
+                     Table** table, bool is_sequential = false);
 
   ~Table();
 
   // Returns a new iterator over the table contents.
   // The result of NewIterator() is initially invalid (caller must
   // call one of the Seek methods on the iterator before using it).
-  Iterator* NewIterator(const ReadOptions&) const;
+  Iterator* NewIterator(const ReadOptions&, bool is_sequential = false) const;
 
   // Given a key, return an approximate byte offset in the file where
   // the data for that key begins (or would begin if the key were
@@ -55,10 +55,9 @@ class Table {
   // be close to the file length.
   uint64_t ApproximateOffsetOf(const Slice& key) const;
 
-  int SetFileDescriptor(int);
+  struct Rep;
 
  private:
-  struct Rep;
   Rep* rep_;
 
   explicit Table(Rep* rep) { rep_ = rep; }
@@ -71,11 +70,13 @@ class Table {
   Status InternalGet(
       const ReadOptions&, const Slice& key,
       void* arg,
-      void (*handle_result)(void* arg, const Slice& k, const Slice& v));
+      void (*handle_result)(void* arg, const Slice& k, const Slice& v), bool is_sequential = false);
 
 
   void ReadMeta(const Footer& footer);
   void ReadFilter(const Slice& filter_handle_value);
+  static RandomAccessFile* PickFileHandler(Table::Rep* , bool is_sequential = false);
+  static int PrefetchTable(RandomAccessFile* , uint64_t);
 
   // No copying allowed
   Table(const Table&);

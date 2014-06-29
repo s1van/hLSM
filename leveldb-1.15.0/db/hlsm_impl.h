@@ -97,8 +97,6 @@ inline int maybe_delete_secondary_table(leveldb::Env* const env, uint64_t num) {
 	return 0;
 }
 
-int prefetch_file(leveldb::RandomAccessFile*, uint64_t);
-
 } // namespace hlsm
 
 
