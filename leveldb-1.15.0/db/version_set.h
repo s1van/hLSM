@@ -118,7 +118,7 @@ class Version {
   std::string DebugString() const;
 
   // Preload index and filter of tables from certain levels
-  int PreloadMetadata(int max_level);
+  int PreloadMetadata(int max_level, bool update_table_level = true);
 
  private:
   friend class Compaction;

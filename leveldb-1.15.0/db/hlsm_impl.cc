@@ -31,15 +31,17 @@ Status TableCache::PreLoadTable(uint64_t file_number, uint64_t file_size) {
 	return s;
 }
 
-int Version::PreloadMetadata(int max_level) {
+int Version::PreloadMetadata(int max_level, bool update_table_level) {
 	DEBUG_INFO(1, "Start\n");
-	for (int level = 0; level < std::max(config::kNumLevels, max_level); level++) {
+	for (int level = 0; level < max_level; level++) {
 		size_t num_files = files_[level].size();
 		FileMetaData* const* files = &files_[level][0];
 		DEBUG_INFO(1, "Level %d:\t", level);
 		for (uint32_t i = 0; i < num_files; i++) {
-			hlsm::runtime::table_level.add(files[i]->number, level);
-			DEBUG_PRINT(1, "%lu[%d]\t", files[i]->number, hlsm::runtime::table_level.get(files[i]->number));
+			if (update_table_level) {
+				hlsm::runtime::table_level.add(files[i]->number, level);
+				DEBUG_PRINT(1, "%lu[%d]\t", files[i]->number, hlsm::runtime::table_level.get(files[i]->number));
+			}
 			Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
 		}
 		DEBUG_PRINT(1, "\n");
@@ -283,7 +285,11 @@ namespace hlsm{
 namespace runtime {
 
 int preload_metadata(leveldb::VersionSet* versions) {
-	return versions->current()->PreloadMetadata(hlsm::config::preload_metadata_max_level);
+	versions->current()->PreloadMetadata(leveldb::config::kNumLevels);
+	CALL_IF_HLSM(reinterpret_cast<leveldb::LazyVersionSet*>(versions)->current_lazy()
+			->PreloadMetadata(hlsm::runtime::kNumLazyLevels, false) );
+
+	return 0;
 }
 
 
