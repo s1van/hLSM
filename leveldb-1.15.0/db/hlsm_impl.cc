@@ -339,8 +339,8 @@ int init(leveldb::Env* env_) {
 
 	} else if (hlsm::config::mode.ishLSM()) {
 		full_mirror = false;
-		top_mirror_end_level = 1;
-		top_pure_mirror_end_level = 0;
+		top_mirror_end_level = 1; // physical level on primary storage; level starts at 0
+		top_pure_mirror_end_level = 0; // physical level on primary storage
 		use_cursor_compaction = true;
 		seqential_read_from_primary = true; // primary is HDD, secondary is SSD
 		random_read_from_primary = false;
@@ -348,7 +348,7 @@ int init(leveldb::Env* env_) {
 		log_on_primary = false;
 		use_opq_thread = true;
 		two_phase_end_level = 5; // cursor (logical) level; level starts at 0
-		mirror_start_level = two_phase_end_level * 2;
+		mirror_start_level = two_phase_end_level * 2; // physical level on primary storage
 		leveldb::config::kMaxMemCompactLevel = 0; // do not write memtable to levels other than 0
 	}
 
