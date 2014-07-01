@@ -130,6 +130,7 @@ static const int RW_RELAX=1024;
 static const int RW_WAIT_MS=8192;
 static int monitor_interval = -1; //microseconds
 static bool first_monitor_interval = true;
+static FILE* monitor_log = stdout;
 
 static leveldb::Histogram intv_read_hist_;
 static leveldb::Histogram intv_write_hist_;
@@ -311,10 +312,10 @@ class Stats {
     	intv_mu_.Lock();
     	if (intv_end_ - intv_start_ > monitor_interval) {
     		if (first_monitor_interval) {
-    			fprintf(stdout, "\nPID\tTID\tRL\tWL\tRD\tWD\tRT\tWT\n");
+    			fprintf(monitor_log, "\nPID\tTID\tRL\tWL\tRD\tWD\tRT\tWT\n");
     			first_monitor_interval = false;
     		}
-    		fprintf(stdout, "%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+    		fprintf(monitor_log, "%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
     				pid_, tid_,
 					intv_read_hist_.Average(), intv_write_hist_.Average(), 
 					intv_read_hist_.StandardDeviation(), intv_write_hist_.StandardDeviation(), 
@@ -1238,6 +1239,8 @@ int main(int argc, char** argv) {
       hlsm::config::debug_level = n;
     } else if (strncmp(argv[i], "--debug_file=", 13) == 0) {
       hlsm::config::debug_file = argv[i] + 13;
+    } else if (strncmp(argv[i], "--monitor_log=", 14) == 0) {
+      monitor_log = fopen(argv[i] + 14, "w");
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
