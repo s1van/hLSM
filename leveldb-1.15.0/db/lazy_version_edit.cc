@@ -392,19 +392,23 @@ int LazyVersionEdit::UpdateLazyLevels(int level, VersionSet* v, Compaction* cons
 	  // X.L (f) -> (X+1).R
 	  } else if (llevel == 0) {
 		  assert(level == 1);
-		  FileMetaData *f = c->input(0,0);
+		for (int i = 0; i < c->num_input_files(0); i++) {
+		  FileMetaData *f = c->input(0,i);
 		  DeleteLazyFile(level, f->number);
 		  AddLazyFile(hlsm::get_active_delta_level(delta_meta_, 1),
 		  				f->number, f->file_size, f->smallest, f->largest);
+		}
 
 	  } else if (llevel > 0 && llevel < hlsm::runtime::two_phase_end_level) {
-		  FileMetaData *f = c->input(0,0);
+		for (int i = 0; i < c->num_input_files(0); i++) {
+		  FileMetaData *f = c->input(0,i);
 		  std::string *copy_from = new std::string(TableFileName(hlsm::config::primary_storage_path, f->number));
 		  hlsm::runtime::moving_tables_.insert(f->number);
 		  OPQ_ADD_COPY_DELETED_FILE(hlsm::runtime::op_queue, copy_from, f->number);
 		  // add f to X.NEW
 		  AddLazyFile(hlsm::get_hlsm_new_level(level),
 				  f->number, f->file_size, f->smallest, f->largest);
+		}
 
 	  } else if (llevel == hlsm::runtime::two_phase_end_level) {
 		  // delete input files from (X+1).R
