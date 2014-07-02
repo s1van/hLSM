@@ -114,7 +114,7 @@ inline int get_logical_level(int original_level) {
 
 inline int get_hlsm_new_level(int original_level) {
 	int logical_level = get_logical_level(original_level);
-	assert(logical_level >0 && original_level <= hlsm::runtime::two_phase_end_level);
+	assert(logical_level >0 && logical_level <= hlsm::runtime::two_phase_end_level);
 
 	return logical_level * (hlsm::runtime::delta_level_num + 1) + 1;
 }
@@ -147,7 +147,6 @@ inline std::vector<uint32_t> get_obsolete_delta_levels(delta_meta_t meta[], int 
 	DEBUG_INFO(2, "start: %u, clear: %u\n", start, clear);
 	// require: start and clear are set 0 by default
 	while (start != clear) { // levels: start+1, _2, ..., clear
-		assert(start !=0 && clear != 0);
 		start = start + 1;
 		if (start > hlsm::runtime::delta_level_num) start = 1;
 		levels.push_back(llevel * (hlsm::runtime::delta_level_num + 1) + 1 - start);

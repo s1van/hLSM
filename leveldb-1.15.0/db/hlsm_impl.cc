@@ -26,6 +26,8 @@ namespace leveldb{
 Status TableCache::PreLoadTable(uint64_t file_number, uint64_t file_size) {
 	Cache::Handle* handle = NULL;
 	Status s = FindTable(file_number, file_size, &handle);
+	DEBUG_INFO(3, "file: %lu, size: %lu\n", file_number, file_size);
+	assert(handle != NULL);
 	cache_->Release(handle);
 
 	return s;
@@ -211,6 +213,7 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
   versions_->AddLiveFiles(&live);
 
   std::set<uint64_t> lazy_live = hlsm::runtime::moving_tables_;
+  std::set<uint64_t> on_the_fly = hlsm::runtime::moving_tables_;
   (reinterpret_cast<LazyVersionSet*>(versions_))->AddLiveLazyFiles(&lazy_live);
 
   std::vector<std::string> filenames;
@@ -249,9 +252,12 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
         if (type == kTableFile && lazy_live.find(number) == lazy_live.end()) {
           table_cache_->Evict(number);
         }
-        Log(options_.info_log, "Delete type=%d #%lld\n",
-            int(type), static_cast<unsigned long long>(number));
-        env_->DeleteFile(dbname_ + "/" + filenames[i]);
+	// if the file is in use, delete it next time
+	if (on_the_fly.find(number) == on_the_fly.end() ) {
+        	Log(options_.info_log, "Delete type=%d #%lld\n",
+            	int(type), static_cast<unsigned long long>(number));
+        	env_->DeleteFile(dbname_ + "/" + filenames[i]);
+	}
       }
     }
   }

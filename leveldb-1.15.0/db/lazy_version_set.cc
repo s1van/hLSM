@@ -167,7 +167,7 @@ class LazyVersionSet::Builder {
     }
   }
 
-  inline static void MaybeAddFile(Version* v, LevelState levels[], int level, FileMetaData* f) {
+  inline void MaybeAddFile(Version* v, LevelState levels[], int level, FileMetaData* f) {
     if (levels[level].deleted_files.count(f->number) > 0) {
       // File is deleted: do nothing
     } else {

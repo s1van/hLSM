@@ -72,10 +72,12 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
     		s = Status::OK();
     	}
     }
+    DEBUG_INFO(3, "file = %p\n", file);
 
     if (s.ok()) {
       s = Table::Open(*options_, file, file_size, &table, is_sequential);
     }
+    DEBUG_INFO(3, "s.ok() = %d, table = %p\n", s.ok(), table);
 
     if (!s.ok()) {
       assert(table == NULL);
@@ -87,8 +89,10 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       tf->file = file;
       tf->table = table;
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
+      assert(*handle != NULL);
     }
   }
+  DEBUG_INFO(3, "handle = %p\n", *handle);
   return s;
 }
 
