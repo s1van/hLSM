@@ -169,18 +169,12 @@ typedef struct {
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
-#define OPQ_ADD_COPYFILE(q_, fname_)	do{	\
+#define OPQ_ADD_COPYFILE(q_, fname_, fnum)	do{	\
 		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
 		op_->type = MCopyFile;		\
 		op_->ptr1 = (void*)fname_;	\
-		OPQ_ADD(q_, op_);		\
-	} while(0)
-
-#define OPQ_ADD_COPY_DELETED_FILE(q_, fname_, fnum)	do{	\
-		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
-		op_->type = MCopyDeletedFile;		\
-		op_->ptr1 = (void*)fname_;	\
 		op_->offset = fnum;		\
+		hlsm::runtime::moving_tables_.insert(f->number); \
 		OPQ_ADD(q_, op_);		\
 	} while(0)
 

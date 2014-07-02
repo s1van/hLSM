@@ -76,7 +76,7 @@ Status BasicVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_) {
     	for(int i = 0; i < num_files; i++) {
     		leveldb::FileMetaData* f = files[i];
     		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
-    			new std::string(leveldb::TableFileName(hlsm::config::primary_storage_path, f->number)) );
+    			new std::string(leveldb::TableFileName(hlsm::config::primary_storage_path, f->number)), f->number );
     	}
 
     leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
@@ -96,7 +96,7 @@ Status BasicVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 	hlsm::runtime::table_level.add(f->number, level+1);
 	if (level + 1 == hlsm::runtime::mirror_start_level) { // need to copy the content to secondary
 		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
-				new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+				new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)), f->number);
 	}
 	leveldb::Status status = this->LogAndApply(c->edit(), mutex_);
 

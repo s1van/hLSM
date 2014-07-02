@@ -588,13 +588,13 @@ Status LazyVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 
 	} else if (llevel > 0 && llevel < hlsm::runtime::two_phase_end_level) {
 		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
-					new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+					new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)), f->number);
 		edit->AddLazyFile(hlsm::get_hlsm_new_level(level),
 			f->number, f->file_size, f->smallest, f->largest);
 
 	} else if (llevel == hlsm::runtime::two_phase_end_level) {
 		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
-			new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)));
+			new std::string(TableFileName(hlsm::config::primary_storage_path, f->number)), f->number);
 		// (X+1).R level since last 2-phase level has no new sub-level
 		int rlevel = hlsm::get_hlsm_new_level(level);
 		edit->AddLazyFile(rlevel, f->number, f->file_size, f->smallest, f->largest);
@@ -636,7 +636,7 @@ Status LazyVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     	for(int i = 0; i < num_files; i++) {
     		leveldb::FileMetaData* f = files[i];
     		OPQ_ADD_COPYFILE(hlsm::runtime::op_queue,
-    			new std::string(leveldb::TableFileName(hlsm::config::primary_storage_path, f->number)) );
+    			new std::string(leveldb::TableFileName(hlsm::config::primary_storage_path, f->number)), f->number);
     	}
     }
 

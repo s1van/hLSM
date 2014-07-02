@@ -403,8 +403,7 @@ int LazyVersionEdit::UpdateLazyLevels(int level, VersionSet* v, Compaction* cons
 		for (int i = 0; i < c->num_input_files(0); i++) {
 		  FileMetaData *f = c->input(0,i);
 		  std::string *copy_from = new std::string(TableFileName(hlsm::config::primary_storage_path, f->number));
-		  hlsm::runtime::moving_tables_.insert(f->number);
-		  OPQ_ADD_COPY_DELETED_FILE(hlsm::runtime::op_queue, copy_from, f->number);
+		  OPQ_ADD_COPYFILE(hlsm::runtime::op_queue, copy_from, f->number);
 		  // add f to X.NEW
 		  AddLazyFile(hlsm::get_hlsm_new_level(level),
 				  f->number, f->file_size, f->smallest, f->largest);
