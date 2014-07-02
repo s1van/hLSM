@@ -52,15 +52,6 @@ class LazyVersionEdit: public leveldb::VersionEdit {
 
   void SetDeltaLevels(VersionSet* v);
 
-//  inline int AdvanceActiveDeltaLevel(int level) {
-//	  int llevel = hlsm::get_logical_level(level);
-//	  //lazy_delta_level_offset_[llevel]++;
-//	  DEBUG_INFO(2, "llevel: %d", llevel);
-//	  hlsm::debug_detla_meta(&(delta_meta_[llevel]));
-//	  assert(hlsm::is_valid_detla_meta( &(delta_meta_[llevel]) ));
-//	  return 0;
-//  }
-
   struct Output {
     uint64_t number;
     uint64_t file_size;
@@ -69,6 +60,7 @@ class LazyVersionEdit: public leveldb::VersionEdit {
   int UpdateLazyLevels(int, VersionSet*, Compaction* const, std::vector<Output> &);
 
   inline void AdvanceActiveDeltaLevel(int llevel) {
+	  assert(delta_meta_[llevel].active != delta_meta_[llevel].start);
 	  delta_meta_[llevel].active++;
 	  if (delta_meta_[llevel].active > hlsm::runtime::delta_level_num)
 		  delta_meta_[llevel].active = 1;

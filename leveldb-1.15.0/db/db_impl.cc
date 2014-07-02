@@ -899,7 +899,8 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
         level + 1,
         out.number, out.file_size, out.smallest, out.largest);
   }
-  DEBUG_INFO(1, "Compact Level: %d, #output: %lu\n", level, compact->outputs.size());
+  DEBUG_INFO(1, "Compact Level: %d, #output: %lu, #input[0]: %d\n", level, 
+	compact->outputs.size(), compact->compaction->num_input_files(0) );
   CALL_IF_HLSM(reinterpret_cast<LazyVersionEdit *>(compact->compaction->edit())
 		  ->UpdateLazyLevels(level, versions_, compact->compaction,
 				  reinterpret_cast<std::vector<LazyVersionEdit::Output> &>(compact->outputs) ));

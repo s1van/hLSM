@@ -374,7 +374,7 @@ Status LazyVersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
     }
   }
 
-  DEBUG_LEVEL_CHECK_NOLOCK(2, PrintVersionSet());
+  DEBUG_LEVEL_CHECK_NOLOCK(1, PrintVersionSet());
 
   return s;
 }
@@ -557,7 +557,7 @@ Status LazyVersionSet::MoveFileDown(Compaction* c, port::Mutex *mutex_) {
 	LazyVersionEdit* edit = reinterpret_cast<LazyVersionEdit*>(c->edit());
 	edit->SetDeltaLevels(delta_meta_);
 
-	DEBUG_INFO(2, "number: %lu\tlevel: %d\n", f->number, level);
+	DEBUG_INFO(1, "number: %lu\tlevel: %d\n", f->number, level);
 	edit->DeleteFile(level, f->number);
 	edit->AddFile(level + 1, f->number, f->file_size,
 			f->smallest, f->largest);
@@ -618,7 +618,7 @@ Status LazyVersionSet::MoveLevelDown(Compaction* c, port::Mutex *mutex_){
     int level = c->level();
     leveldb::FileMetaData* const* files = &this->current()->files_[level][0];
     size_t num_files = this->current()->files_[level].size();
-    DEBUG_INFO(2, "move %lu files from level %d to level %d\n", num_files, level, level+1);
+    DEBUG_INFO(1, "move %lu files from level %d to level %d\n", num_files, level, level+1);
 
     LazyVersionEdit* edit = reinterpret_cast<LazyVersionEdit*>(c->edit());
     edit->SetDeltaLevels(delta_meta_);
@@ -780,7 +780,7 @@ Compaction* LazyVersionSet::PickCompaction() {
 
 void LazyVersionSet::PrintVersionSet() {
 	DEBUG_BULK_START;
-	DEBUG_PRINT_NOLOCK(0, "Print Version: [vset: %p, current: %p]\n",
+	DEBUG_PRINT_NOLOCK(0, "Print Regular Version: [vset: %p, current: %p]\n",
 			current_->vset_, current_);
 	for (Version* v = dummy_versions_.next_;
 			v != &dummy_versions_;
@@ -789,7 +789,7 @@ void LazyVersionSet::PrintVersionSet() {
 		for (int level = 0; level < config::kNumLevels; level++) {
 			const std::vector<FileMetaData*>& files = v->files_[level];
 			if (files.size() > 0) {
-				DEBUG_PRINT_NOLOCK(0, "[level %d]\t", level);
+				DEBUG_PRINT_NOLOCK(0, "[level %d, %lu]\t", level, files.size());
 				for (size_t i = 0; i < files.size(); i++) {
 					DEBUG_PRINT_NOLOCK(0, "%lu\t", files[i]->number);
 				}
@@ -799,7 +799,7 @@ void LazyVersionSet::PrintVersionSet() {
 		DEBUG_PRINT_NOLOCK(0, "\n");
 	}
 
-	DEBUG_PRINT_NOLOCK(0, "Print Version: [vset: %p, current: %p]\n",
+	DEBUG_PRINT_NOLOCK(0, "Print Lazy Version: [vset: %p, current: %p]\n",
 				current_->vset_, current_lazy_);
 	for (Version* v = dummy_lazy_versions_.next_;
 			v != &dummy_lazy_versions_;
@@ -808,7 +808,7 @@ void LazyVersionSet::PrintVersionSet() {
 		for (int level = 0; level < hlsm::runtime::kNumLazyLevels; level++) {
 			const std::vector<FileMetaData*>& files = v->files_[level];
 			if (files.size() > 0) {
-				DEBUG_PRINT_NOLOCK(0, "[level %d]\t", level);
+				DEBUG_PRINT_NOLOCK(0, "[level %d, %lu]\t", level, files.size());
 				for (size_t i = 0; i < files.size(); i++) {
 					DEBUG_PRINT_NOLOCK(0, "%lu\t", files[i]->number);
 				}

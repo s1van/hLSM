@@ -59,7 +59,7 @@ inline double calculate_compaction_score(int level, std::vector<leveldb::FileMet
 		else
 			score = 0; // this guarantees that LX.R won't be compacted since the score of LX.L is larger than 0
 	}
-	DEBUG_INFO(2, "level %d: score = %.4f, size = %ld, max_size = %.4f\n", level, score,
+	DEBUG_INFO(1, "level %d: score = %.4f, size = %ld, max_size = %.4f\n", level, score,
 			TotalFileSize(files[level]), MaxBytesForLevel(level));
 	return score;
 }
@@ -75,7 +75,7 @@ inline double calculate_level0_compaction_score(size_t level0_size, size_t level
 			(level0_size >= leveldb::config::kL0_CompactionTrigger && level1_size == 0) ) // level 1 must be empty
 		score = level0_size/static_cast<double>(leveldb::config::kL0_CompactionTrigger);
 
-	DEBUG_INFO(2, "size: %lu\tscore: %.3f\n", level0_size, score);
+	DEBUG_INFO(1, "size: %lu\tscore: %.3f\n", level0_size, score);
 	return score;
 }
 
