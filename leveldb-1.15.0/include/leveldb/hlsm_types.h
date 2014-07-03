@@ -281,6 +281,7 @@ public:
 private:
 	std::tr1::unordered_map<uint64_t, int> mapping_;
 	uint64_t latest;
+	leveldb::port::Mutex mutex_;
 };
 
 namespace runtime {

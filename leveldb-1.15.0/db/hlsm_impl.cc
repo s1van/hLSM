@@ -387,10 +387,14 @@ bool DeltaLevelMeta::is_valid_detla_meta() {
 }
 
 int TableLevel::get(uint64_t key){
+	mutex_.Lock();
+	int value;
 	if (mapping_.find(key) == mapping_.end())
-		return -1;
+		value = -1;
 	else
-		return mapping_.find(key)->second;
+		value = mapping_.find(key)->second;
+	mutex_.Unlock();
+	return value;
 }
 
 uint64_t TableLevel::getLatest() {
@@ -399,14 +403,18 @@ uint64_t TableLevel::getLatest() {
 
 int TableLevel::add(uint64_t key, int raw_level){
 	DEBUG_INFO(2, "level: %d\tfile number: %lu\n", raw_level, key);
+	mutex_.Lock();
 	mapping_[key] = raw_level;
 	latest = key;
+	mutex_.Unlock();
 	return 0;
 }
 
 int TableLevel::remove(uint64_t key){
+	mutex_.Lock();
 	DEBUG_INFO(2, "file number: %lu\n", key);
 	mapping_.erase(key);
+	mutex_.Unlock();
 	return 0;
 }
 
