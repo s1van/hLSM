@@ -1540,6 +1540,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
     }
 
     if (s.ok()) {
+      hlsm::runtime::preload_metadata(impl->versions_);
       int msl = hlsm::runtime::mirror_start_level;
       hlsm::runtime::mirror_start_level = -1;
       impl->DeleteObsoleteFiles();
@@ -1550,7 +1551,6 @@ Status DB::Open(const Options& options, const std::string& dbname,
   impl->mutex_.Unlock();
   if (s.ok()) {
     *dbptr = impl;
-    hlsm::runtime::preload_metadata(impl->versions_);
   } else {
     delete impl;
   }
