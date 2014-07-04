@@ -174,6 +174,7 @@ class LazyVersionSet::Builder {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
         // Must not overlap
+	DEBUG_INFO(2, "Versions: %p, level: %d, file: %lu\n", v, level, f->number);
         assert(vset_->icmp_.Compare((*files)[files->size()-1]->largest,
                                     f->smallest) < 0);
       }
@@ -232,7 +233,9 @@ class LazyVersionSet::Builder {
   }
 
   void SaveTo(Version* v, Version* lv) {
+	  DEBUG_INFO(2, "Save Version: %p\n", v);
 	  SaveTo(v, base_, levels_, leveldb::config::kNumLevels);
+	  DEBUG_INFO(2, "Save Lazy Version: %p\n", lv);
 	  SaveTo(lv, lazy_base_, lazy_levels_, hlsm::runtime::kNumLazyLevels);
   }
 
@@ -754,6 +757,10 @@ Compaction* LazyVersionSet::PickCompaction() {
     }
   } else if (seek_compaction) {
     level = current_->file_to_compact_level_;
+    // X.L -> X.R can only happen through MoveLevelDown or MoveFileDown
+    //   so Lazy Version won't have overlapped files on level other than 0
+    if (level % 2 == 0) return NULL;
+
     c = new Compaction(level);
     c->inputs_[0].push_back(current_->file_to_compact_);
   } else {
@@ -770,10 +777,12 @@ Compaction* LazyVersionSet::PickCompaction() {
 		FileMetaData* f = current_->files_[level][i];
 		c->inputs_[0].push_back(f);
 	}
-    assert(!c->inputs_[0].empty());
+	assert(!c->inputs_[0].empty());
   }
 
   SetupOtherInputs(c);
+  DEBUG_INFO(2, "level = %d, seek_c: %d, size_c:%d\n", 
+	level, seek_compaction, size_compaction);
 
   return c;
 }

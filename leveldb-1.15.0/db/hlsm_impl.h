@@ -71,8 +71,7 @@ inline double calculate_level0_compaction_score(size_t level0_size, size_t level
 	}
 
 	double score = 0;
-	if (!hlsm::config::mode.ishLSM() ||
-			(level0_size >= leveldb::config::kL0_CompactionTrigger && level1_size == 0) ) // level 1 must be empty
+	if (level0_size >= leveldb::config::kL0_CompactionTrigger && level1_size == 0) // level 1 must be empty
 		score = level0_size/static_cast<double>(leveldb::config::kL0_CompactionTrigger);
 
 	DEBUG_INFO(1, "size: %lu\tscore: %.3f\n", level0_size, score);
