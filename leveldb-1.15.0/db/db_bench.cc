@@ -1237,6 +1237,8 @@ int main(int argc, char** argv) {
       FLAGS_countdown = d;
     } else if (sscanf(argv[i], "--debug_level=%d%c", &n, &junk) == 1) {
       hlsm::config::debug_level = n;
+    } else if (sscanf(argv[i], "--preload_metadata=%d%c", &n, &junk) == 1) {
+      hlsm::config::preload_metadata = n;
     } else if (strncmp(argv[i], "--debug_file=", 13) == 0) {
       hlsm::config::debug_file = argv[i] + 13;
     } else if (strncmp(argv[i], "--monitor_log=", 14) == 0) {

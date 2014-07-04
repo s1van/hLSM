@@ -18,7 +18,7 @@ namespace hlsm {
 
 namespace config {
 DBMode mode("Default");
-int preload_metadata_max_level = 5;
+bool preload_metadata = 1;
 int kMinKBPerSeek = 16;
 
 char *primary_storage_path = NULL;
