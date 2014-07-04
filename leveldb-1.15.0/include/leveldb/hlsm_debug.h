@@ -35,9 +35,6 @@ extern leveldb::port::Mutex debug_mutex_;
 
 
 #define _DEBUG_MEASURE(_func, _tag) do{\
-		_PRINT_CURRENT_TIME;        \
-		fprintf(_DEBUG_FD, "\t");   \
-		_PRINT_LOC_INFO;            \
 		struct timeval before;  \
 		struct timeval after;   \
 		gettimeofday(&before, NULL);\
@@ -45,8 +42,13 @@ extern leveldb::port::Mutex debug_mutex_;
 		_func;			\
 		gettimeofday(&after, NULL);	\
 		after.tv_sec = (after.tv_sec << 36) >> 36;\
+		hlsm::runtime::debug_mutex_.Lock();  \
+		_PRINT_CURRENT_TIME;        \
+		fprintf(_DEBUG_FD, "\t");   \
+		_PRINT_LOC_INFO;            \
 		fprintf(_DEBUG_FD, "\t%s\t%ld\n", _tag, (after.tv_sec - before.tv_sec) * 1000000 + after.tv_usec - before.tv_usec);\
 		_FLUSH; \
+		hlsm::runtime::debug_mutex_.Unlock();\
 	} while(0)
 
 #define _DEBUG_PRINT(_format, ...) do{\
@@ -93,19 +95,16 @@ extern leveldb::port::Mutex debug_mutex_;
 
 /*
  * Public Functions
- * Warning: debug "wrapping" a function that has "locked" debug calls will cause deadlock
- *   e.g. DEBUG_MEASURE(func(){DEBUG_INFO()})
  */
 
 // with lock
-#define DEBUG_MEASURE(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_MEASURE(__VA_ARGS__))
+#define DEBUG_MEASURE(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_MEASURE(__VA_ARGS__)) // locked within _DEBUG_MEASURE
 #define DEBUG_PRINT(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_INFO(__VA_ARGS__))
 #define DEBUG_META_ITER(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_META_ITER(__VA_ARGS__))
 #define DEBUG_LEVEL_CHECK(_level, _do) _DEBUG_LEVEL_CHECK(_level, _do)
 
 // no lock
-#define DEBUG_MEASURE_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_MEASURE(__VA_ARGS__))
 #define DEBUG_PRINT_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_INFO(__VA_ARGS__))
 #define DEBUG_META_ITER_NOLOCK(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_META_ITER(__VA_ARGS__))

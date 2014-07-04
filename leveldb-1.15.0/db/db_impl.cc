@@ -1541,7 +1541,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
 
     if (s.ok()) {
       if (hlsm::config::preload_metadata) {
-    	  hlsm::runtime::preload_metadata(impl->versions_);
+    	  DEBUG_MEASURE(0, hlsm::runtime::preload_metadata(impl->versions_), "META PRELOAD");
       }
       int msl = hlsm::runtime::mirror_start_level;
       hlsm::runtime::mirror_start_level = -1;
