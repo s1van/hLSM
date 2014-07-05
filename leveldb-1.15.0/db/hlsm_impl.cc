@@ -291,9 +291,9 @@ namespace hlsm{
 namespace runtime {
 
 int preload_metadata(leveldb::VersionSet* versions) {
-	versions->current()->PreloadMetadata(leveldb::config::kNumLevels);
 	CALL_IF_HLSM(reinterpret_cast<leveldb::LazyVersionSet*>(versions)->current_lazy()
 			->PreloadMetadata(hlsm::runtime::kNumLazyLevels, false) );
+	versions->current()->PreloadMetadata(leveldb::config::kNumLevels);
 
 	return 0;
 }

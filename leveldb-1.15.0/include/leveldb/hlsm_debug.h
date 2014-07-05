@@ -121,7 +121,7 @@ extern leveldb::port::Mutex debug_mutex_;
 #define _DO_NOTHING	do{} while(0)
 
 // with lock
-#define DEBUG_MEASURE(...) 	_DO_NOTHING
+#define DEBUG_MEASURE(_level, _func, ...) do{_func;} while(0);	
 #define DEBUG_PRINT(...) 	_DO_NOTHING
 #define DEBUG_INFO(...) 	_DO_NOTHING
 #define DEBUG_META_ITER(...) 	_DO_NOTHING
