@@ -209,6 +209,7 @@ class PosixWritableFile : public WritableFile {
   }
 
   virtual Status Close() {
+    Flush();
     Status result;
     if (fclose(file_) != 0) {
       result = IOError(filename_, errno);

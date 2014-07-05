@@ -306,6 +306,7 @@ int init(leveldb::Env* env_) {
 
 	hlsm::runtime::env_ = env_;
 	if (hlsm::config::mode.isDefault()) {
+		leveldb::config::kMaxMemCompactLevel = 0;
 
 	} else if (hlsm::config::mode.isFullMirror()) {
 		full_mirror = true;
@@ -315,6 +316,7 @@ int init(leveldb::Env* env_) {
 		meta_on_primary = true;
 		log_on_primary = true;
 		use_opq_thread = true;
+		leveldb::config::kMaxMemCompactLevel = 0;
 
 	} else if (hlsm::config::mode.isPartialMirror()) {
 		full_mirror = false;
