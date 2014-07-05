@@ -97,6 +97,9 @@ extern leveldb::port::Mutex debug_mutex_;
  * Public Functions
  */
 
+
+#ifndef NDEBUG
+
 // with lock
 #define DEBUG_MEASURE(_level, ...) _DEBUG_LEVEL_CHECK_NOLOCK(_level, _DEBUG_MEASURE(__VA_ARGS__)) // locked within _DEBUG_MEASURE
 #define DEBUG_PRINT(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_PRINT(__VA_ARGS__))
@@ -112,5 +115,27 @@ extern leveldb::port::Mutex debug_mutex_;
 
 #define DEBUG_BULK_START	hlsm::runtime::debug_mutex_.Lock()
 #define DEBUG_BULK_END	hlsm::runtime::debug_mutex_.Unlock()
+
+#else // ifdef NDEBUG
+
+#define _DO_NOTHING	do{} while(0)
+
+// with lock
+#define DEBUG_MEASURE(...) 	_DO_NOTHING
+#define DEBUG_PRINT(...) 	_DO_NOTHING
+#define DEBUG_INFO(...) 	_DO_NOTHING
+#define DEBUG_META_ITER(...) 	_DO_NOTHING
+#define DEBUG_LEVEL_CHECK(...) _DO_NOTHING
+
+// no lock
+#define DEBUG_PRINT_NOLOCK(...) _DO_NOTHING
+#define DEBUG_INFO_NOLOCK(...)	_DO_NOTHING
+#define DEBUG_META_ITER_NOLOCK(...) 	_DO_NOTHING
+#define DEBUG_LEVEL_CHECK_NOLOCK(...)	_DO_NOTHING
+
+#define DEBUG_BULK_START	_DO_NOTHING
+#define DEBUG_BULK_END		_DO_NOTHING
+
+#endif
 
 #endif  //HLSM_DEBUG_H
