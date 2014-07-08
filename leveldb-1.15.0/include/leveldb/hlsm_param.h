@@ -26,6 +26,7 @@ namespace config {
 extern DBMode mode;
 extern bool preload_metadata;
 extern int kMinKBPerSeek;
+extern int kMaxLevel;
 
 extern const char *primary_storage_path;	// primary path holds all the .ldb files
 extern const char *secondary_storage_path;

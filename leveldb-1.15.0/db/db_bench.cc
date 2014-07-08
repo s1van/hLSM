@@ -1233,6 +1233,8 @@ int main(int argc, char** argv) {
       leveldb::config::kL0_Size = n;
     } else if (sscanf(argv[i], "--level_ratio=%d%c", &n, &junk) == 1) {
       leveldb::config::kLevelRatio = n;
+    } else if (sscanf(argv[i], "--max_level=%d%c", &n, &junk) == 1) {
+      hlsm::config::kMaxLevel = n;
     } else if (sscanf(argv[i], "--countdown=%lf%c", &d, &junk) == 1) {
       FLAGS_countdown = d;
     } else if (sscanf(argv[i], "--debug_level=%d%c", &n, &junk) == 1) {

@@ -307,6 +307,7 @@ int init(leveldb::Env* env_) {
 	hlsm::runtime::env_ = env_;
 	if (hlsm::config::mode.isDefault()) {
 		leveldb::config::kMaxMemCompactLevel = 0;
+		use_cursor_compaction = false;
 
 	} else if (hlsm::config::mode.isFullMirror()) {
 		full_mirror = true;

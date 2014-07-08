@@ -20,6 +20,7 @@ namespace config {
 DBMode mode("Default");
 bool preload_metadata = 1;
 int kMinKBPerSeek = 16;
+int kMaxLevel = -1;
 
 char *primary_storage_path = NULL;
 char *secondary_storage_path = NULL;
