@@ -34,6 +34,7 @@ extern bool compact_read_from_secondary;
 extern bool direct_write_on_secondary;
 extern bool secondary_use_buffer_file;
 extern bool lazy_sync_on_secondary;
+extern bool run_compaction;
 
 extern int debug_level;	// default value 0 is; info whose level is smaller or equal to debug_level will be displayed
 extern char* debug_file;// where to dump the debug info
