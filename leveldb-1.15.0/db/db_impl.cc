@@ -662,7 +662,7 @@ void DBImpl::MaybeScheduleCompaction() {
     // No work to be done
   } else {
     bg_compaction_scheduled_ = true;
-    if (!hlsm::config::run_compaction)
+    if (hlsm::config::run_compaction)
     	env_->Schedule(&DBImpl::BGWork, this);
   }
 }

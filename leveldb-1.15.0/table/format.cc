@@ -5,6 +5,7 @@
 #include "table/format.h"
 
 #include "leveldb/env.h"
+#include "leveldb/hlsm.h"
 #include "port/port.h"
 #include "table/block.h"
 #include "util/coding.h"
@@ -83,6 +84,7 @@ Status ReadBlock(RandomAccessFile* file,
   }
   if (contents.size() != n + kBlockTrailerSize) {
     delete[] buf;
+    DEBUG_INFO(1, "%s\n", file->GetFileName().c_str());
     return Status::Corruption("truncated block read");
   }
 
