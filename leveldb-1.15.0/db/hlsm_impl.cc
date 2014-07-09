@@ -174,6 +174,11 @@ RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
 		ret = (rep->secondary_ != NULL)? rep->secondary_ : rep->primary_;
 	}
 
+	if (ret == rep->secondary_) {
+		if (hlsm::runtime::FileNameHash::inuse(rep->secondary_->GetFileName()) )
+			ret = rep->primary_;
+	}
+
 	DEBUG_INFO(3, "ret = %p, primary = %p, secondary = %p, file: %s\n",
 			ret, rep->primary_, rep->secondary_, ret->GetFileName().c_str());
 	assert(ret != NULL);
