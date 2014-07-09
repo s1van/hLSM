@@ -29,6 +29,7 @@ bool direct_write_on_secondary = true;
 bool secondary_use_buffer_file = true;
 bool lazy_sync_on_secondary = true;
 bool run_compaction = true;
+bool iterator_prefetch = false;
 
 int debug_level = 0;
 char* debug_file = NULL;
