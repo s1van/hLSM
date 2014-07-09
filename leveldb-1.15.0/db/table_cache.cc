@@ -112,6 +112,10 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 
   Table* table;
   table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+  if (is_sequential) {
+	  DEBUG_INFO(2, "Prefetch fnum: %lu, size: %lu\n", file_number, file_size);
+	  Table::PrefetchTable(table->PickFileHandler(is_sequential), file_size);
+  }
 
   Iterator* result = table->NewIterator(options, is_sequential);
   result->RegisterCleanup(&UnrefEntry, cache_, handle);

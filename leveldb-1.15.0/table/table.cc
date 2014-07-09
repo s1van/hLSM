@@ -50,10 +50,6 @@ Status Table::Open(const Options& options,
                    Table** table, bool is_sequential) {
 
   DEBUG_INFO(2, "filename: %s\n", file->GetFileName().c_str());
-  if (hlsm::do_prefetch(is_sequential)) { // pre-fetch the entire table
-	  PrefetchTable(file, size);
-	  //ToDo: prefetch the table into the block cache
-  }
 
   *table = NULL;
   if (size < Footer::kEncodedLength) {

@@ -76,6 +76,7 @@ class Table {
   void ReadMeta(const Footer& footer);
   void ReadFilter(const Slice& filter_handle_value);
   static RandomAccessFile* PickFileHandler(Table::Rep* , bool is_sequential = false);
+  RandomAccessFile* PickFileHandler(bool is_sequential = false);
   static int PrefetchTable(RandomAccessFile* , uint64_t);
 
   // No copying allowed

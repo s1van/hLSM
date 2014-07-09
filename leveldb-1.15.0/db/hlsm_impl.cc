@@ -185,6 +185,10 @@ RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
 	return ret;
 }
 
+RandomAccessFile* Table::PickFileHandler(bool is_sequential) {
+	return Table::PickFileHandler(rep_, is_sequential);
+}
+
 
 
 int Table::PrefetchTable(leveldb::RandomAccessFile* file, uint64_t size) {
