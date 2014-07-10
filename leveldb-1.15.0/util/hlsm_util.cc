@@ -248,7 +248,6 @@ class PosixBufferFile : public leveldb::WritableFile {
 		limit_ = base_ + buffer_size_;
 		fd_ = fileno(f);
 		DEBUG_INFO(2, "%s\n", filename_.c_str());
-		runtime::FileNameHash::add(filename_);
   }
 
 
@@ -319,6 +318,7 @@ FullMirror_PosixWritableFile::FullMirror_PosixWritableFile(const std::string& fn
 	}
 	DEBUG_INFO(2,"Primary: %s\t%p\tSecondary: %s\t%p\t%d\n",filename_.c_str(), file_, sfilename_.c_str(), sfile_, sfd_);
 
+	runtime::FileNameHash::add(sfilename_);
 	if (hlsm::config::secondary_use_buffer_file) {
 		sfp_ = new PosixBufferFile(sfilename_, sfile_);
 
@@ -339,14 +339,14 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
   }
 
   Status FullMirror_PosixWritableFile::Append(const Slice& data) {
-    if (USE_OPQ) {
+    if (USE_OPQ && hlsm::config::append_by_opq) {
     	Slice *sdata = data.clone();
     	OPQ_ADD_APPEND(OPQ, sfp_, sdata);
-	} else {
-		Status ss = sfp_->Append(data);
-		if (!ss.ok())
-			return ss;
-	}
+    } else {
+        Status ss = sfp_->Append(data);
+        if (!ss.ok())
+	    return ss;
+    }
 
     Status s = fp_->Append(data);
     DEBUG_INFO(3, "%ld\n", data.size());

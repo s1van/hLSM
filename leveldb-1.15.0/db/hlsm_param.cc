@@ -27,9 +27,10 @@ char *secondary_storage_path = NULL;
 bool compact_read_from_secondary = true;
 bool direct_write_on_secondary = true;
 bool secondary_use_buffer_file = true;
-bool lazy_sync_on_secondary = true;
+bool lazy_sync_on_secondary = false;
 bool run_compaction = true;
-bool iterator_prefetch = false;
+bool iterator_prefetch = false; // not good yet
+bool append_by_opq = false;
 
 int debug_level = 0;
 char* debug_file = NULL;
