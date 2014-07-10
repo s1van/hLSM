@@ -49,6 +49,7 @@ extern leveldb::Env* env_;
 
 extern pthread_t *opq_helper;
 extern opq op_queue;
+extern opq hop_queue; // for high priority operations
 
 extern FILE *debug_fd;	// initialized using hlsm::config::debug_file (default: stderr)
 extern leveldb::port::Mutex debug_mutex_;

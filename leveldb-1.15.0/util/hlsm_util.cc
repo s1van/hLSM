@@ -17,6 +17,7 @@
 #define SSPATH hlsm::config::secondary_storage_path
 #define OPQ_HELPER hlsm::runtime::opq_helper
 #define OPQ hlsm::runtime::op_queue
+#define HOPQ hlsm::runtime::hop_queue
 
 using namespace leveldb;
 namespace hlsm{
@@ -54,9 +55,14 @@ static void *opq_helper(void * arg) {
 
 	DEBUG_INFO(1, "Start OPQ Helper\tQueue: %p\n", op_queue);
 	while(1) {
-		if (OPQ_NONEMPTY(op_queue)) {
+		if (OPQ_NONEMPTY(op_queue) || OPQ_NONEMPTY(HOPQ) ) {
 
-			OPQ_POP(op_queue, op);			//operation
+			if (OPQ_NONEMPTY(HOPQ)) { //get operation first from high priority queue
+				OPQ_POP(HOPQ, op);
+			} else {
+				OPQ_POP(op_queue, op);
+			}
+
 			DEBUG_INFO(3, "OPQ POP\ttype: %d\top: %p\n", op->type, op);
 
 			if (op->type == MSync) {
@@ -97,6 +103,14 @@ static void *opq_helper(void * arg) {
 				Status s = sfp->Close();
 				DEBUG_INFO(2, "MClose\top: %p\tstatus: %s\n", op, s.ToString().c_str());
 				delete sfp;
+
+			} else if (op->type == MIterPrefetch) {
+				Iterator* iter = (Iterator* ) op->ptr1;	//file handler
+				ReadOptions* opt = (ReadOptions*) op->ptr2;
+				DEBUG_INFO(2, "MIterPrefetch\n");
+				for (iter->SeekToFirst(); iter->Valid(); iter->Next() ) ;
+				delete iter;
+				delete opt;
 
 			} else if (op->type == MDelete) {
 				std::string *fname = (std::string*) (op->ptr1);
@@ -140,6 +154,8 @@ static void *opq_helper(void * arg) {
 
 int init_opq_helpler() {
 	INIT_HELPER_AND_QUEUE(OPQ_HELPER, OPQ);
+	hlsm::runtime::hop_queue = OPQ_MALLOC;
+	OPQ_INIT(hlsm::runtime::hop_queue);
 	return 0;
 }
 

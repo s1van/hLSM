@@ -44,7 +44,11 @@ int Version::PreloadMetadata(int max_level, bool update_table_level) {
 				hlsm::runtime::table_level.add(files[i]->number, level);
 				DEBUG_PRINT(1, "%lu[%d]\t", files[i]->number, hlsm::runtime::table_level.get(files[i]->number));
 			}
-			Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
+			DEBUG_INFO(3, "file %lu is in use (%d)\n", files[i]->number,
+					hlsm::runtime::FileNameHash::inuse(files[i]->number));
+			if (!hlsm::runtime::FileNameHash::inuse(files[i]->number)) {
+				Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
+			}
 		}
 		DEBUG_PRINT(1, "\n");
 	}

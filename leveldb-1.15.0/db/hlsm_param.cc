@@ -22,7 +22,7 @@ bool preload_metadata = 1;
 int kMinKBPerSeek = 16;
 int kMaxLevel = -1;
 
-char *primary_storage_path = NULL;
+const char *primary_storage_path = NULL;
 char *secondary_storage_path = NULL;
 bool compact_read_from_secondary = true;
 bool direct_write_on_secondary = true;
@@ -43,6 +43,7 @@ leveldb::Env* env_ = NULL;
 
 pthread_t *opq_helper = NULL;
 opq op_queue = NULL;
+opq hop_queue = NULL;
 
 FILE *debug_fd = stderr;
 leveldb::port::Mutex debug_mutex_;

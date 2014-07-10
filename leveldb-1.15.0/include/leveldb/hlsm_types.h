@@ -13,7 +13,15 @@
 #include "leveldb/status.h"
 #include "leveldb/hlsm_debug.h"
 
+namespace leveldb{
+extern std::string TableFileName(const std::string& dbname, uint64_t number);
+}
+
 namespace hlsm {
+
+namespace config {
+extern const char *primary_storage_path;
+}
 
 class FullMirror_PosixWritableFile : public leveldb::WritableFile {
 private:
@@ -44,7 +52,7 @@ public:
 //1. Status Append(const Slice& data)
 //2. Status Sync()
 //3. Status Close()
-typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose, MTruncate, MCopyFile, MCopyDeletedFile} mio_op_t;
+typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose, MTruncate, MCopyFile, MCopyDeletedFile, MIterPrefetch} mio_op_t;
 
 typedef struct {
 	mio_op_t type;
@@ -106,6 +114,14 @@ typedef struct {
 		q_->length++;	\
 		pthread_mutex_unlock(&(q_->mutex) );\
 		OPQ_WAKEUP(q_);	\
+	} while(0)
+
+#define OPQ_ADD_ITR_PREFETCH(q_, it_, opt_)	do{	\
+		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
+		op_->type = MIterPrefetch;\
+		op_->ptr1 = it_;	\
+		op_->ptr2 = opt_;	\
+		OPQ_ADD(q_, op_);	\
 	} while(0)
 
 #define OPQ_ADD_TRUNCATE(q_, fd_, size_)	do{	\
@@ -312,6 +328,10 @@ public:
 	static int inuse(const std::string filename) {
 		uint32_t h = leveldb::Hash(filename.c_str(), filename.length(), 1);
 		return (hash[h%HSIZE]>0);
+	}
+
+	static int inuse(uint64_t fnum) {
+		return inuse(leveldb::TableFileName(hlsm::config::primary_storage_path, fnum));
 	}
 
 #undef HSIZE
