@@ -20,7 +20,7 @@ extern std::string TableFileName(const std::string& dbname, uint64_t number);
 namespace hlsm {
 
 namespace config {
-extern const char *primary_storage_path;
+extern const char *secondary_storage_path;
 }
 
 class FullMirror_PosixWritableFile : public leveldb::WritableFile {
@@ -331,7 +331,7 @@ public:
 	}
 
 	static int inuse(uint64_t fnum) {
-		return inuse(leveldb::TableFileName(hlsm::config::primary_storage_path, fnum));
+		return inuse(leveldb::TableFileName(hlsm::config::secondary_storage_path, fnum));
 	}
 
 #undef HSIZE

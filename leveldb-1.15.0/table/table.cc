@@ -24,6 +24,8 @@ struct Table::Rep {
     delete filter;
     delete [] filter_data;
     delete index_block;
+    DEBUG_INFO(2, "primary = %p, secondary = %p\n", 
+		primary_, secondary_);
   }
 
   Rep(){
@@ -90,6 +92,7 @@ Status Table::Open(const Options& options,
 
     if (hlsm::is_primary_file(file->GetFileName())) {
     	rep->primary_ = file;
+	DEBUG_INFO(2, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
     } else {
     	rep->secondary_ = file;
     }

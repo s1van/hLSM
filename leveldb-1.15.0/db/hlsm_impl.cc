@@ -46,9 +46,7 @@ int Version::PreloadMetadata(int max_level, bool update_table_level) {
 			}
 			DEBUG_INFO(3, "file %lu is in use (%d)\n", files[i]->number,
 					hlsm::runtime::FileNameHash::inuse(files[i]->number));
-			if (!hlsm::runtime::FileNameHash::inuse(files[i]->number)) {
-				Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
-			}
+			Status s = vset_->table_cache_->PreLoadTable(files[i]->number, files[i]->file_size);
 		}
 		DEBUG_PRINT(1, "\n");
 	}
@@ -154,8 +152,11 @@ RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
 			if (env->FileExists(pname)) {
 				Status s = env->NewRandomAccessFile(pname, &(rep->primary_));
 				if (!s.ok()) {
-					DEBUG_INFO(2, "File exists, but can not be opened, %s\n", pname.c_str());
+					DEBUG_INFO(2, "File %s exists, but can not be opened, %s\n", 
+						pname.c_str(), s.ToString().c_str());
 					rep->primary_ = NULL;
+				} else {
+					DEBUG_INFO(2, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
 				}
 
 			}
@@ -165,26 +166,27 @@ RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
 		if (hlsm::config::secondary_storage_path != NULL) {
 			if (rep->secondary_ == NULL) {
 				std::string sname = PRIMARY_TO_SECONDARY_FILE(rep->primary_->GetFileName());
-				if (env->FileExists(sname)) {
-					Status s = env->NewRandomAccessFile(sname, &(rep->secondary_));
-					if (!s.ok()) {
-						DEBUG_INFO(2, "File exists, but can not be opened, %s\n", sname.c_str());
-						rep->secondary_ = NULL;
-					}
+				if (!hlsm::runtime::FileNameHash::inuse(sname) ) {
+					DEBUG_INFO(2, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
+					if (env->FileExists(sname)) {
+						Status s = env->NewRandomAccessFile(sname, &(rep->secondary_));
+						if (!s.ok()) {
+							DEBUG_INFO(2, "File %s exists, but can not be opened, %s\n", 
+							sname.c_str(), s.ToString().c_str());
+							rep->secondary_ = NULL;
+						}
 
+					}
 				}
 			}
 		}
 		ret = (rep->secondary_ != NULL)? rep->secondary_ : rep->primary_;
 	}
 
-	if (ret == rep->secondary_) {
-		if (hlsm::runtime::FileNameHash::inuse(rep->secondary_->GetFileName()) )
-			ret = rep->primary_;
+	if (rep->secondary_ != NULL && ret == rep->secondary_) {
+		if (is_sequential && !hlsm::config::compact_read_from_secondary && rep->primary_ != NULL)
+                	ret = rep->primary_;
 	}
-
-	if (is_sequential && !hlsm::config::compact_read_from_secondary && rep->primary_ != NULL)
-                ret = rep->primary_;
 
 	DEBUG_INFO(3, "ret = %p, primary = %p, secondary = %p, file: %s\n",
 			ret, rep->primary_, rep->secondary_, ret->GetFileName().c_str());

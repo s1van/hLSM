@@ -75,6 +75,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
     DEBUG_INFO(3, "file = %p\n", file);
 
     if (s.ok()) {
+      DEBUG_INFO(2, "Open %s, %lu\n", file->GetFileName().c_str(), file_number);
       s = Table::Open(*options_, file, file_size, &table, is_sequential);
     }
     DEBUG_INFO(3, "s.ok() = %d, table = %p\n", s.ok(), table);
@@ -113,13 +114,18 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
   Table* table;
   table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
   if (hlsm::runtime::use_opq_thread && hlsm::config::iterator_prefetch && is_sequential) {
+  	  Cache::Handle* phandle = NULL;
+  	  Status s = FindTable(file_number, file_size, &phandle, is_sequential);
+
 	  DEBUG_INFO(2, "Prefetch fnum: %lu, size: %lu\n", file_number, file_size);
-	  //Table::PrefetchTable(table->PickFileHandler(is_sequential), file_size);
 	  ReadOptions* opq_options = (ReadOptions*) malloc(sizeof(ReadOptions));
 	  opq_options->snapshot = options.snapshot;
 	  opq_options->verify_checksums = false;
 	  opq_options->fill_cache = true;
-	  OPQ_ADD_ITR_PREFETCH(hlsm::runtime::hop_queue, table->NewIterator(*opq_options, is_sequential), opq_options);
+	  Iterator* piter = table->NewIterator(*opq_options, is_sequential);
+  	  piter->RegisterCleanup(&UnrefEntry, cache_, phandle);
+
+	  OPQ_ADD_ITR_PREFETCH(hlsm::runtime::hop_queue, piter, opq_options);
 	  DEBUG_INFO(2, "op added\n");
   }
 

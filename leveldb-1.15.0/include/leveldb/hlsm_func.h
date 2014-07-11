@@ -67,7 +67,7 @@ inline bool read_from_primary(bool is_sequential) {
 }
 
 inline static std::string relocate_file(const std::string& fname) {
-	DEBUG_INFO(2, "relocate %s\n", fname.c_str());
+	DEBUG_INFO(3, "relocate %s\n", fname.c_str());
 	if (FILE_HAS_SUFFIX(fname, ".ldb")) {
 		return fname;
 	} else if (FILE_HAS_SUFFIX(fname, ".log") && !hlsm::runtime::log_on_primary) {

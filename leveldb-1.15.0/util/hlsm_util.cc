@@ -81,9 +81,9 @@ static void *opq_helper(void * arg) {
 			} else if (op->type == MBufClose) {
 				FILE * fp = (FILE *) op->ptr1;
 				std::string *fname = (std::string*) (op->ptr2);
-		    	runtime::FileNameHash::drop(*fname);
+				runtime::FileNameHash::drop(*fname);
 				assert(fclose(fp) == 0);
-				DEBUG_INFO(3, "MBufClose\tfp: %p\n", fp);
+				DEBUG_INFO(2, "MBufClose\tfp: %p\n", fp);
 				delete fname;
 
 			} else if (op->type == MTruncate) {
@@ -101,7 +101,8 @@ static void *opq_helper(void * arg) {
 			} else if (op->type == MClose) {
 				sfp = (WritableFile *) op->ptr1;	//file handler
 				Status s = sfp->Close();
-				DEBUG_INFO(2, "MClose\top: %p\tstatus: %s\n", op, s.ToString().c_str());
+				DEBUG_INFO(2, "MClose\t%s\top: %p\tstatus: %s\n", 
+					sfp->GetFileName().c_str(), op, s.ToString().c_str());
 				delete sfp;
 
 			} else if (op->type == MIterPrefetch) {
@@ -273,6 +274,10 @@ class PosixBufferFile : public leveldb::WritableFile {
     }
   }
 
+  std::string GetFileName() {
+	return filename_;
+  }
+
   virtual Status Append(const Slice& data) {
     const char* src = data.data();
 
@@ -379,7 +384,7 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
 	}
 
 	Status s = fp_->Close();
-	DEBUG_INFO(2, "%s\n", s.ToString().c_str());
+	DEBUG_INFO(2, "%s, %s\n", s.ToString().c_str(), filename_.c_str());
 	file_ = NULL;
 	return s;
   }

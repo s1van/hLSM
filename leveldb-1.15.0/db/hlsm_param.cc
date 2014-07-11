@@ -23,8 +23,8 @@ int kMinKBPerSeek = 16;
 int kMaxLevel = -1;
 
 const char *primary_storage_path = NULL;
-char *secondary_storage_path = NULL;
-bool compact_read_from_secondary = true;
+const char *secondary_storage_path = NULL;
+bool compact_read_from_secondary = false;
 bool direct_write_on_secondary = true;
 bool secondary_use_buffer_file = true;
 bool lazy_sync_on_secondary = false;
