@@ -126,7 +126,7 @@ static double rwrandom_wspeed = 0;
 
 static int rwrandom_read_completed = 0;
 static int rwrandom_write_completed = 0;
-static const int RW_RELAX=1024;
+static int RW_RELAX=1024;
 static const int RW_WAIT_MS=8192;
 static int monitor_interval = -1; //microseconds
 static bool first_monitor_interval = true;
@@ -909,7 +909,7 @@ class Benchmark {
     WriteBatch batch;
     Status s;
     int64_t bytes = 0;
-    bool isRead;
+    bool isRead, isFound;
 	
     time_t begin, now;
 
@@ -926,19 +926,21 @@ class Benchmark {
     for (i = 0; i < rnum; i++) {
       char key[100];
 			time(&now);
-      if ( (rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) <= rwrandom_write_completed + RW_RELAX)||
-			(rwrandom_wspeed == 0 &&
-			rwrandom_read_completed < (rwrandom_read_completed + rwrandom_write_completed) * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
+      if ( (rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) <= rwrandom_write_completed)||
+		(rwrandom_wspeed == 0 &&
+		rwrandom_read_completed < (rwrandom_read_completed + rwrandom_write_completed) * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
         const int64_t k = thread->rand.Next64() % FLAGS_read_span;
         snprintf(key, sizeof(key), "%020ld", k);
-        if (db_->Get(options, key, &value).ok()) {
+	DEBUG_MEASURE(2, (isFound = db_->Get(options, key, &value).ok()), "RW--Get" );
+
+        if (isFound) {
               found++;
         }
         thread->stats.FinishedReadOp();
 
-				rwrandom_read_mu_.Lock();
-				rwrandom_read_completed++;
-				rwrandom_read_mu_.Unlock();
+	rwrandom_read_mu_.Lock();
+	rwrandom_read_completed++;
+	rwrandom_read_mu_.Unlock();
       }
       else {
     	Env::Default()->SleepForMicroseconds(RW_WAIT_MS);
@@ -1259,6 +1261,7 @@ int main(int argc, char** argv) {
   fprintf(stderr, "Range: %ld(w) %ld(r)\n", FLAGS_write_span, FLAGS_read_span);
   if (FLAGS_read_percent == -1) {
 	rwrandom_wspeed = FLAGS_num / FLAGS_countdown;
+	RW_RELAX = rwrandom_wspeed * 1; // relax up to 5 seconds
   }
 
 

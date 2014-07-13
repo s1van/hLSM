@@ -120,7 +120,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 	  DEBUG_INFO(2, "Prefetch fnum: %lu, size: %lu\n", file_number, file_size);
 	  ReadOptions* opq_options = (ReadOptions*) malloc(sizeof(ReadOptions));
 	  opq_options->snapshot = options.snapshot;
-	  opq_options->verify_checksums = false;
+	  opq_options->verify_checksums = true;
 	  opq_options->fill_cache = true;
 	  Iterator* piter = table->NewIterator(*opq_options, is_sequential);
   	  piter->RegisterCleanup(&UnrefEntry, cache_, phandle);
@@ -145,10 +145,11 @@ Status TableCache::Get(const ReadOptions& options,
                        void* arg,
                        void (*saver)(void*, const Slice&, const Slice&)) {
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s;
+  DEBUG_MEASURE(2, (s = FindTable(file_number, file_size, &handle)), "Get--FindTable");
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
-    s = t->InternalGet(options, k, arg, saver, false);
+    DEBUG_MEASURE(2, (s = t->InternalGet(options, k, arg, saver, false)), "TableCache::Get--InternatGet");
     cache_->Release(handle);
   }
   return s;

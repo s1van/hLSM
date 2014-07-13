@@ -30,7 +30,6 @@ extern int kMaxLevel;
 
 extern const char *primary_storage_path;	// primary path holds all the .ldb files
 extern const char *secondary_storage_path;
-extern bool compact_read_from_secondary;
 extern bool direct_write_on_secondary;
 extern bool secondary_use_buffer_file;
 extern bool lazy_sync_on_secondary;

@@ -1164,13 +1164,16 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Unlock();
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
-    if (mem->Get(lkey, value, &s)) {
-      // Done
-    } else if (imm != NULL && imm->Get(lkey, value, &s)) {
-      // Done
-    } else {
+    bool found = false;
+    DEBUG_MEASURE(2, (found = mem->Get(lkey, value, &s)), "DBImpl::Get--mem->Get");
+
+    if (!found && imm != NULL) { 
+	DEBUG_MEASURE(2, (found = imm->Get(lkey, value, &s)), "DBImpl::Get--imm->Get" );
+    }
+
+    if (!found) {
       if (hlsm::read_from_primary(false) || !hlsm::config::mode.ishLSM()) {
-    	  s = current->Get(options, lkey, value, &stats);
+    	  DEBUG_MEASURE(2, (s = current->Get(options, lkey, value, &stats)), "DBImpl::Get--Version::Get");
       } else {
     	  Version* current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy();
     	  s = current_lazy->Get(options, lkey, value, &stats);

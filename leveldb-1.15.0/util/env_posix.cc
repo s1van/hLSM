@@ -162,6 +162,7 @@ class PosixMmapReadableFile: public RandomAccessFile {
                         MmapLimiter* limiter)
       : mmapped_region_(base), length_(length),
         limiter_(limiter) { filename_ = fname;
+    	DEBUG_INFO(2, "%s\n", fname.c_str());
   }
 
   virtual ~PosixMmapReadableFile() {
@@ -370,6 +371,7 @@ class PosixEnv : public Env {
   }
 
   virtual bool FileExists(const std::string& fname) {
+    DEBUG_INFO(3, "%s", fname.c_str());
     return access(hlsm::relocate_file(fname).c_str(), F_OK) == 0;
   }
 

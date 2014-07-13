@@ -116,7 +116,7 @@ static void *opq_helper(void * arg) {
 			} else if (op->type == MDelete) {
 				std::string *fname = (std::string*) (op->ptr1);
 				int ret = unlink(fname->c_str());
-				DEBUG_INFO(3, "MDelete\tfname: %s\n", fname->c_str());
+				DEBUG_INFO(2, "MDelete\tfname: %s\n", fname->c_str());
 				delete fname;
 
 			} else if (op->type == MCopyFile) {
