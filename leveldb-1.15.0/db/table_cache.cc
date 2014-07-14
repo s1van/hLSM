@@ -120,7 +120,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 	  DEBUG_INFO(2, "Prefetch fnum: %lu, size: %lu\n", file_number, file_size);
 	  ReadOptions* opq_options = (ReadOptions*) malloc(sizeof(ReadOptions));
 	  opq_options->snapshot = options.snapshot;
-	  opq_options->verify_checksums = true;
+	  opq_options->verify_checksums = false;
 	  opq_options->fill_cache = true;
 	  Iterator* piter = table->NewIterator(*opq_options, is_sequential);
   	  piter->RegisterCleanup(&UnrefEntry, cache_, phandle);

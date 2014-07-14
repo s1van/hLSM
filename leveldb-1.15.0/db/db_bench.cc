@@ -124,10 +124,10 @@ static double FLAGS_countdown = -1;
 
 static double rwrandom_wspeed = 0;
 
-static int rwrandom_read_completed = 0;
-static int rwrandom_write_completed = 0;
+static volatile int rwrandom_read_completed = 0;
+static volatile int rwrandom_write_completed = 0;
 static int RW_RELAX=1024;
-static const int RW_WAIT_MS=8192;
+static const int RW_WAIT_US=8192;
 static int monitor_interval = -1; //microseconds
 static bool first_monitor_interval = true;
 static FILE* monitor_log = stdout;
@@ -920,30 +920,50 @@ class Benchmark {
     time(&begin);
     int i = 0;
     int rnum = (int)(((double)num_ * FLAGS_read_percent) / 100);
-		if (rwrandom_wspeed > 0)
-			rnum = num_ * 10;
+    if (rwrandom_wspeed > 0)
+      rnum = num_ * 10;
 
-    for (i = 0; i < rnum; i++) {
+    int done = 0;
+    int wait_us = RW_WAIT_US;
+    int waited = 0;
+    for (i = 0; done < rnum; i++) {
       char key[100];
-			time(&now);
-      if ( (rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) <= rwrandom_write_completed)||
-		(rwrandom_wspeed == 0 &&
-		rwrandom_read_completed < (rwrandom_read_completed + rwrandom_write_completed) * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
-        const int64_t k = thread->rand.Next64() % FLAGS_read_span;
-        snprintf(key, sizeof(key), "%020ld", k);
-	DEBUG_MEASURE(2, (isFound = db_->Get(options, key, &value).ok()), "RW--Get" );
+      time(&now);
+      const int64_t k = thread->rand.Next64() % FLAGS_read_span;
+      snprintf(key, sizeof(key), "%020ld", k);
+      DEBUG_MEASURE(2, (s = db_->Get(options, key, &value)), "RW--Get" );
+      isFound = s.ok();
 
-        if (isFound) {
-              found++;
-        }
-        thread->stats.FinishedReadOp();
-
-	rwrandom_read_mu_.Lock();
-	rwrandom_read_completed++;
-	rwrandom_read_mu_.Unlock();
+      done++;
+      if (isFound) {
+        found++;
+        DEBUG_INFO(2, "read found %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
+      } else {
+        DEBUG_INFO(2, "Not Found since %s\n",s.ToString().c_str() );
       }
-      else {
-    	Env::Default()->SleepForMicroseconds(RW_WAIT_MS);
+
+      thread->stats.FinishedReadOp();
+
+      rwrandom_read_mu_.Lock();
+      rwrandom_read_completed++;
+      rwrandom_read_mu_.Unlock();
+
+      if ((rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) > rwrandom_write_completed - RW_RELAX) ||
+        (rwrandom_wspeed == 0 &&
+        rwrandom_read_completed < (rwrandom_read_completed + rwrandom_write_completed) 
+          * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
+        DEBUG_INFO(2, "read pauses: read %d, write %d\n", 
+          rwrandom_read_completed, rwrandom_write_completed);
+        Env::Default()->SleepForMicroseconds(wait_us);
+        
+        waited++;
+        if (waited % 100 == 0) {
+          DEBUG_INFO(2, "waited = %d, wait_us = %d\n", waited, wait_us);
+          wait_us *= 2;
+        }
+      } else {
+        wait_us = RW_WAIT_US;
+        waited = 0;
       }
       
       if (FLAGS_countdown > 0 && (i+1) % 100 == 0) {
@@ -953,11 +973,14 @@ class Benchmark {
       }
     }
 
+    DEBUG_INFO(1, "Read Thread reads %d k-v pairs, %d found\n", done, found);
     char msg[100];
-    snprintf(msg, sizeof(msg), "(%d of %d found)", found, i);
+    snprintf(msg, sizeof(msg), "(%d of %d found)", found, done);
     thread->stats.AddMessage(msg);
 
-    fprintf(stderr, "rwrandom completes %d read ops\n", i);
+    time(&now);
+    fprintf(stderr, "rwrandom completes %d read ops (out of $%d) in %.3f seconds\n", 
+      done, rwrandom_read_completed, difftime(now, begin));
 
   }
 
@@ -980,22 +1003,25 @@ class Benchmark {
     time(&begin);
     int i = 0;
     int wnum = (int)(((double)num_ * (100-FLAGS_read_percent)) / 100);
-		if (rwrandom_wspeed > 0)
-			wnum = num_ * 10;
+    if (rwrandom_wspeed > 0)
+      wnum = num_ * 10;
     fprintf(stderr, "RWRandom_Write will write %d ops\n", wnum);
 
-    for (i = 0; i < wnum; i++) {
+    int done = 0;
+    for (i = 0; done < wnum; i++) {
       char key[100];
-			time(&now);
-      if ( (rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) > (rwrandom_write_completed-RW_RELAX) )|| 
-			(rwrandom_wspeed == 0 &&
-			rwrandom_write_completed < (rwrandom_read_completed + rwrandom_write_completed) * ((double)(100 - FLAGS_read_percent) / 100)  + RW_RELAX) ) {
+      time(&now);
+      if ( (rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) > (rwrandom_write_completed - RW_RELAX) )|| 
+        (rwrandom_wspeed == 0 &&
+          rwrandom_write_completed < 
+            (rwrandom_read_completed + rwrandom_write_completed) * ((double)(100 - FLAGS_read_percent) / 100)  + RW_RELAX) ) {
         const uint64_t k = FLAGS_write_from + (thread->rand.Next64() % FLAGS_write_span);
         char key[100];
         snprintf(key, sizeof(key), "%020ld", k);
         batch.Put(key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);
         bnum ++;
+        done ++;
 
         if (bnum == entries_per_batch_) {
                 bnum = 0;
@@ -1011,17 +1037,21 @@ class Benchmark {
     	thread->stats.FinishedWriteOp();
 	rwrandom_write_completed++;
       } else {
-	Env::Default()->SleepForMicroseconds(RW_WAIT_MS);
+        DEBUG_INFO(2, "write pauses %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
+	Env::Default()->SleepForMicroseconds(RW_WAIT_US);
       }
       
       if (FLAGS_countdown > 0 && (i+1) % 100 == 0) {
 	time(&now);
-	if (difftime(now, begin) > FLAGS_countdown)
-		break;
+	if (difftime(now, begin) > FLAGS_countdown) {
+          break;
+        }
       }
     }
 
-    fprintf(stderr, "rwrandom completes %d write ops\n", i);
+    time(&now);
+    fprintf(stderr, "rwrandom completes %d write ops in %.3f seconds\n", 
+      done, difftime(now, begin));
 
   }
 
@@ -1261,7 +1291,7 @@ int main(int argc, char** argv) {
   fprintf(stderr, "Range: %ld(w) %ld(r)\n", FLAGS_write_span, FLAGS_read_span);
   if (FLAGS_read_percent == -1) {
 	rwrandom_wspeed = FLAGS_num / FLAGS_countdown;
-	RW_RELAX = rwrandom_wspeed * 1; // relax up to 5 seconds
+	RW_RELAX = rwrandom_wspeed * 2; // where read/write overlapped
   }
 
 
