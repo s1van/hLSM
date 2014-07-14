@@ -54,6 +54,7 @@ class Table {
   // E.g., the approximate offset of the last key in the table will
   // be close to the file length.
   uint64_t ApproximateOffsetOf(const Slice& key) const;
+  static int PrefetchTable(RandomAccessFile* , uint64_t);
 
   struct Rep;
 
@@ -77,7 +78,6 @@ class Table {
   void ReadFilter(const Slice& filter_handle_value);
   static RandomAccessFile* PickFileHandler(Table::Rep* , bool is_sequential = false);
   RandomAccessFile* PickFileHandler(bool is_sequential = false);
-  static int PrefetchTable(RandomAccessFile* , uint64_t);
 
   // No copying allowed
   Table(const Table&);

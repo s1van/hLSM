@@ -113,6 +113,8 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 
   Table* table;
   table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+  DEBUG_INFO(2, "is_sequential = %d, iter_prefetch = %d, raw_prefetch = %d\n",
+		  is_sequential, hlsm::config::iterator_prefetch, hlsm::config::raw_prefetch);
   if (hlsm::runtime::use_opq_thread && hlsm::config::iterator_prefetch && is_sequential) {
   	  Cache::Handle* phandle = NULL;
   	  Status s = FindTable(file_number, file_size, &phandle, is_sequential);
@@ -126,7 +128,12 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
   	  piter->RegisterCleanup(&UnrefEntry, cache_, phandle);
 
 	  OPQ_ADD_ITR_PREFETCH(hlsm::runtime::hop_queue, piter, opq_options);
-	  DEBUG_INFO(2, "op added\n");
+	  DEBUG_INFO(2, "ITR_PREFETCH op added\n");
+
+  } else if (hlsm::runtime::use_opq_thread && hlsm::config::raw_prefetch && is_sequential) {
+	  OPQ_ADD_RAW_PREFETCH(hlsm::runtime::hop_queue,
+			  table->PickFileHandler(is_sequential), file_size);
+	  DEBUG_INFO(2, "RAW_PREFETCH op added\n");
   }
 
   Iterator* result = table->NewIterator(options, is_sequential);

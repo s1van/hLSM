@@ -28,7 +28,8 @@ bool direct_write_on_secondary = true;
 bool secondary_use_buffer_file = true;
 bool lazy_sync_on_secondary = false;
 bool run_compaction = true;
-bool iterator_prefetch = false; // not good yet
+bool iterator_prefetch = false;
+bool raw_prefetch = false;
 bool append_by_opq = false;
 
 int debug_level = 0;

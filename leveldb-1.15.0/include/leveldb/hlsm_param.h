@@ -35,6 +35,7 @@ extern bool secondary_use_buffer_file;
 extern bool lazy_sync_on_secondary;
 extern bool run_compaction;
 extern bool iterator_prefetch;
+extern bool raw_prefetch;
 extern bool append_by_opq;
 
 extern int debug_level;	// default value 0 is; info whose level is smaller or equal to debug_level will be displayed

@@ -1276,7 +1276,9 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--run_compaction=%d%c", &n, &junk) == 1) {
       hlsm::config::run_compaction = n;
     } else if (sscanf(argv[i], "--iterator_prefetch=%d%c", &n, &junk) == 1) {
-          hlsm::config::iterator_prefetch = n;
+      hlsm::config::iterator_prefetch = n;
+    } else if (sscanf(argv[i], "--raw_prefetch=%d%c", &n, &junk) == 1) {
+      hlsm::config::raw_prefetch = n;
     } else if (strncmp(argv[i], "--debug_file=", 13) == 0) {
       hlsm::config::debug_file = argv[i] + 13;
     } else if (strncmp(argv[i], "--monitor_log=", 14) == 0) {

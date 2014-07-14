@@ -12,6 +12,7 @@
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
 #include "leveldb/env.h"
+#include "leveldb/table.h"
 
 #define USE_OPQ hlsm::runtime::use_opq_thread
 #define SSPATH hlsm::config::secondary_storage_path
@@ -112,6 +113,12 @@ static void *opq_helper(void * arg) {
 				for (iter->SeekToFirst(); iter->Valid(); iter->Next() ) ;
 				delete iter;
 				delete opt;
+
+			} else if (op->type == MRawPrefetch) {
+				RandomAccessFile* file = (RandomAccessFile*) op->ptr1;	//file handler
+				uint64_t fsize = (uint64_t) op->lu_int;
+				DEBUG_INFO(2, "MRawPrefetch, file_size = %lu\n", fsize);
+				Table::PrefetchTable(file, fsize);
 
 			} else if (op->type == MDelete) {
 				std::string *fname = (std::string*) (op->ptr1);

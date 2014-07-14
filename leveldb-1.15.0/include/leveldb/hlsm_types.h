@@ -52,7 +52,8 @@ public:
 //1. Status Append(const Slice& data)
 //2. Status Sync()
 //3. Status Close()
-typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose, MTruncate, MCopyFile, MCopyDeletedFile, MIterPrefetch} mio_op_t;
+typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose,
+	MTruncate, MCopyFile, MCopyDeletedFile, MIterPrefetch, MRawPrefetch} mio_op_t;
 
 typedef struct {
 	mio_op_t type;
@@ -61,6 +62,7 @@ typedef struct {
 	int fd;
 	size_t size;
 	uint64_t offset;
+	uint64_t lu_int;
 } *mio_op, mio_op_s;
 
 struct entry_ {
@@ -121,6 +123,14 @@ typedef struct {
 		op_->type = MIterPrefetch;\
 		op_->ptr1 = it_;	\
 		op_->ptr2 = opt_;	\
+		OPQ_ADD(q_, op_);	\
+	} while(0)
+
+#define OPQ_ADD_RAW_PREFETCH(q_, file_, size_)	do{	\
+		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
+		op_->type = MRawPrefetch;\
+		op_->ptr1 = file_;	\
+		op_->lu_int = size_;	\
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
