@@ -200,8 +200,8 @@ Iterator* Table::BlockReader(void* arg,
       if (cache_handle != NULL) {
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
       } else {
-      DEBUG_MEASURE(3, (s = ReadBlock(PickFileHandler(table->rep_, is_sequential), options, handle, &contents)), 
-	"BlockReader--ReadBlock" );
+      	DEBUG_MEASURE_RECORD(3, (s = ReadBlock(PickFileHandler(table->rep_, is_sequential), options, handle, &contents)),
+      			"BlockReader--ReadBlock" );
         if (s.ok()) {
           block = new Block(contents);
           if (contents.cachable && options.fill_cache) {
@@ -211,8 +211,8 @@ Iterator* Table::BlockReader(void* arg,
         }
       }
     } else {
-      DEBUG_MEASURE(3, (s = ReadBlock(PickFileHandler(table->rep_, is_sequential), options, handle, &contents)),
-	"BlockReader--ReadBlock" );
+    	DEBUG_MEASURE_RECORD(3, (s = ReadBlock(PickFileHandler(table->rep_, is_sequential), options, handle, &contents)),
+    			"BlockReader--ReadBlock" );
       if (s.ok()) {
         block = new Block(contents);
       }
@@ -255,7 +255,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
       // Not found
     } else {
       Iterator* block_iter; 
-      DEBUG_MEASURE(2, (block_iter = BlockReader(this, options, iiter->value(), is_sequential)), 
+      DEBUG_MEASURE_RECORD(2, (block_iter = BlockReader(this, options, iiter->value(), is_sequential)),
 	"InternalGet--BlockReader");
       block_iter->Seek(k);
       if (block_iter->Valid()) {

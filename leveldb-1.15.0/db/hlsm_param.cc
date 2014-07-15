@@ -47,6 +47,7 @@ opq hop_queue = NULL;
 
 FILE *debug_fd = stderr;
 leveldb::port::Mutex debug_mutex_;
+hlsm::NamedCounter counters;
 
 bool use_opq_thread = false;
 bool full_mirror = false;

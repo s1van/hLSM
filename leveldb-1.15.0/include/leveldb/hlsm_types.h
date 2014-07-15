@@ -372,6 +372,69 @@ struct DeltaLevelMeta{
 
 typedef struct DeltaLevelMeta delta_meta_t;
 
+class NamedCounter {
+
+struct cc {
+	int occurance;
+	int value;
+};
+
+public:
+	NamedCounter() {};
+	inline int add_nolock(std::string name, int delta) {
+		if (mapping_.count(name) > 0) {
+			mapping_[name].value += delta;
+			mapping_[name].occurance ++;
+		} else {
+			mapping_[name].value = delta;
+			mapping_[name].occurance = 1;
+		}
+
+		return 0;
+	}
+
+	inline int add_nolock(const char *name, int delta) {
+		add_nolock(std::string(name), delta);
+	}
+
+	inline int add(std::string name, int delta) {
+		mutex_.Lock();
+		add_nolock(name, delta);
+		mutex_.Unlock();
+	}
+
+	inline int add(const char* name, int delta) {
+		add(std::string(name), delta);
+	}
+
+
+	inline int get(std::string name) {
+		mutex_.Lock();
+		int value;
+		if (mapping_.find(name) == mapping_.end())
+			value = -1;
+		else
+			value = mapping_.find(name)->second.value;
+		mutex_.Unlock();
+		return value;
+	}
+
+	void print() {
+		mutex_.Lock();
+		std::tr1::unordered_map<std::string, struct cc>::iterator map_it;
+		fprintf(runtime::debug_fd, "Print all Named Counters\n");
+		for (map_it = mapping_.begin(); map_it != mapping_.end(); map_it++) {
+			fprintf(runtime::debug_fd, "Counter %s: %d / %d\n", map_it->first.c_str(),
+					map_it->second.value, map_it->second.occurance);
+		}
+		mutex_.Unlock();
+	}
+
+private:
+	std::tr1::unordered_map<std::string, struct cc> mapping_;
+	leveldb::port::Mutex mutex_;
+};
+
 } // hlsm
 
 #endif  //HLSM_TYPES_H

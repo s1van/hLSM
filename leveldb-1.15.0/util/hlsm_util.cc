@@ -372,7 +372,7 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
     	OPQ_ADD_APPEND(OPQ, sfp_, sdata);
     } else {
         Status ss;
-        DEBUG_MEASURE(2, (ss = sfp_->Append(data)), "sfp_->Append");
+        DEBUG_MEASURE_RECORD(2, (ss = sfp_->Append(data)), "sfp_->Append");
         if (!ss.ok())
 	    return ss;
     }

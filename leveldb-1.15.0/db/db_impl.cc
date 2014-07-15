@@ -170,6 +170,8 @@ DBImpl::~DBImpl() {
 		Log(options_.info_log, "MJoin takes %lu ms", (secondary_end_at - primary_end_at)/1000);
   }
 
+  DEBUG_LEVEL_CHECK(1, hlsm::runtime::counters.print());
+
   delete versions_;
   if (mem_ != NULL) mem_->Unref();
   if (imm_ != NULL) imm_->Unref();
@@ -1165,15 +1167,15 @@ Status DBImpl::Get(const ReadOptions& options,
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
     bool found = false;
-    DEBUG_MEASURE(2, (found = mem->Get(lkey, value, &s)), "DBImpl::Get--mem->Get");
+    DEBUG_MEASURE_RECORD(2, (found = mem->Get(lkey, value, &s)), "DBImpl::Get--mem->Get");
 
     if (!found && imm != NULL) { 
-	DEBUG_MEASURE(2, (found = imm->Get(lkey, value, &s)), "DBImpl::Get--imm->Get" );
+    	DEBUG_MEASURE_RECORD(2, (found = imm->Get(lkey, value, &s)), "DBImpl::Get--imm->Get" );
     }
 
     if (!found) {
       if (hlsm::read_from_primary(false) || !hlsm::config::mode.ishLSM()) {
-    	  DEBUG_MEASURE(2, (s = current->Get(options, lkey, value, &stats)), "DBImpl::Get--Version::Get");
+    	  DEBUG_MEASURE_RECORD(2, (s = current->Get(options, lkey, value, &stats)), "DBImpl::Get--Version::Get");
       } else {
     	  Version* current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy();
     	  s = current_lazy->Get(options, lkey, value, &stats);
@@ -1249,7 +1251,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
   // May temporarily unlock and wait.
   Status status;
-  DEBUG_MEASURE(2, (status = MakeRoomForWrite(my_batch == NULL)), "DBImpl::Write--MakeRoom");
+  DEBUG_MEASURE_RECORD(2, (status = MakeRoomForWrite(my_batch == NULL)), "DBImpl::Write--MakeRoom");
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
   if (status.ok() && my_batch != NULL) {  // NULL batch is for compactions
@@ -1272,7 +1274,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
         }
       }
       if (status.ok()) {
-        DEBUG_MEASURE(2, (status = WriteBatchInternal::InsertInto(updates, mem_)), "DBImpl::Write--Insert");
+        DEBUG_MEASURE_RECORD(2, (status = WriteBatchInternal::InsertInto(updates, mem_)), "DBImpl::Write--Insert");
       }
       mutex_.Lock();
       if (sync_error) {

@@ -51,6 +51,17 @@ extern leveldb::port::Mutex debug_mutex_;
 		hlsm::runtime::debug_mutex_.Unlock();\
 	} while(0)
 
+#define _DEBUG_MEASURE_RECORD(_func, _tag) do{\
+		struct timeval before;  \
+		struct timeval after;   \
+		gettimeofday(&before, NULL);\
+		before.tv_sec = (before.tv_sec << 36) >> 36;\
+		_func;			\
+		gettimeofday(&after, NULL);	\
+		after.tv_sec = (after.tv_sec << 36) >> 36;\
+		hlsm::runtime::counters.add(_tag, (after.tv_sec - before.tv_sec) * 1000000 + after.tv_usec - before.tv_usec );	\
+	} while(0)
+
 #define _DEBUG_PRINT(_format, ...) do{\
 		fprintf(_DEBUG_FD, _format, ## __VA_ARGS__);\
 		_FLUSH; \
@@ -100,6 +111,7 @@ extern leveldb::port::Mutex debug_mutex_;
 		}	\
 	} while(0)
 
+
 /*
  * Public Functions
  */
@@ -109,6 +121,7 @@ extern leveldb::port::Mutex debug_mutex_;
 
 // with lock
 #define DEBUG_MEASURE(_level, _do, ...) _DEBUG_LEVEL_CHECK_NOLOCK_NOSKIP(_level, _DEBUG_MEASURE(_do, __VA_ARGS__), _do) // locked within _DEBUG_MEASURE
+#define DEBUG_MEASURE_RECORD(_level, _do, ...) _DEBUG_LEVEL_CHECK_NOLOCK_NOSKIP(_level, _DEBUG_MEASURE_RECORD(_do, __VA_ARGS__), _do)
 #define DEBUG_PRINT(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_PRINT(__VA_ARGS__))
 #define DEBUG_INFO(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_INFO(__VA_ARGS__))
 #define DEBUG_META_ITER(_level, ...) _DEBUG_LEVEL_CHECK(_level, _DEBUG_META_ITER(__VA_ARGS__))
@@ -128,7 +141,8 @@ extern leveldb::port::Mutex debug_mutex_;
 #define _DO_NOTHING	do{} while(0)
 
 // with lock
-#define DEBUG_MEASURE(_level, _func, ...) do{_func;} while(0);	
+#define DEBUG_MEASURE(_level, _func, ...) do{_func;} while(0)
+#define DEBUG_MEASURE_RECORD(_level, _func, ...) do{_func;} while(0)
 #define DEBUG_PRINT(...) 	_DO_NOTHING
 #define DEBUG_INFO(...) 	_DO_NOTHING
 #define DEBUG_META_ITER(...) 	_DO_NOTHING

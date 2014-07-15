@@ -53,6 +53,7 @@ extern opq hop_queue; // for high priority operations
 
 extern FILE *debug_fd;	// initialized using hlsm::config::debug_file (default: stderr)
 extern leveldb::port::Mutex debug_mutex_;
+extern hlsm::NamedCounter counters;
 
 extern bool  use_opq_thread;
 extern bool full_mirror;

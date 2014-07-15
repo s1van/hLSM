@@ -414,8 +414,8 @@ Status Version::Get(const ReadOptions& options,
       saver.user_key = user_key;
       saver.value = value;
       DEBUG_INFO(3, "before table_cache_->Get()\n");
-      DEBUG_MEASURE(2, (s = vset_->table_cache_->Get(options, f->number, f->file_size, ikey, &saver, SaveValue)), 
-	"Version::Get--TableCache::Get");
+      DEBUG_MEASURE_RECORD(2, (s = vset_->table_cache_->Get(options, f->number, f->file_size, ikey, &saver, SaveValue)),
+      		"Version::Get--TableCache::Get");
       DEBUG_INFO(3, "after table_cache_->Get()\n");
 
       if (!s.ok()) {
