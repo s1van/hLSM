@@ -127,7 +127,7 @@ static double rwrandom_wspeed = 0;
 static volatile int rwrandom_read_completed = 0;
 static volatile int rwrandom_write_completed = 0;
 static int RW_RELAX=1024;
-static const int RW_WAIT_US=8192;
+static const int RW_WAIT_US=2048;
 static int monitor_interval = -1; //microseconds
 static bool first_monitor_interval = true;
 static FILE* monitor_log = stdout;
@@ -359,10 +359,10 @@ class Stats {
             extra.c_str());
     if (FLAGS_histogram) {
       fprintf(stdout, "Microseconds per op:\n%s\n", hist_.ToString().c_str());
-      if (read_done_ > 0)
-        fprintf(stdout, "Microseconds per ReadOp:\n%s\n", read_hist_.ToString().c_str());
-      if (write_done_ > 0)
-        fprintf(stdout, "Microseconds per WriteOp:\n%s\n", write_hist_.ToString().c_str());
+    if (read_done_ > 0)
+      fprintf(stdout, "Microseconds per ReadOp:\n%s\n", read_hist_.ToString().c_str());
+    if (write_done_ > 0)
+      fprintf(stdout, "Microseconds per WriteOp:\n%s\n", write_hist_.ToString().c_str());
     }
     fflush(stdout);
   }
@@ -925,6 +925,8 @@ class Benchmark {
 
     int done = 0;
     int wait_us = RW_WAIT_US;
+    double ct_waited = 0;
+    int c_waited = 0;
     int waited = 0;
     for (i = 0; done < rnum; i++) {
       char key[100];
@@ -948,15 +950,17 @@ class Benchmark {
       rwrandom_read_completed++;
       rwrandom_read_mu_.Unlock();
 
-      if ((rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) > rwrandom_write_completed - RW_RELAX) ||
+      if ((rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) > rwrandom_write_completed + RW_RELAX) ||
         (rwrandom_wspeed == 0 &&
-        rwrandom_read_completed < (rwrandom_read_completed + rwrandom_write_completed) 
+        rwrandom_read_completed > (rwrandom_read_completed + rwrandom_write_completed) 
           * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
         DEBUG_INFO(2, "read pauses: read %d, write %d\n", 
           rwrandom_read_completed, rwrandom_write_completed);
         Env::Default()->SleepForMicroseconds(wait_us);
-        
-        waited++;
+
+        ct_waited =+ wait_us;
+        c_waited ++;
+        waited ++;
         if (waited % 100 == 0) {
           DEBUG_INFO(2, "waited = %d, wait_us = %d\n", waited, wait_us);
           wait_us *= 2;
@@ -979,8 +983,8 @@ class Benchmark {
     thread->stats.AddMessage(msg);
 
     time(&now);
-    fprintf(stderr, "rwrandom completes %d read ops (out of $%d) in %.3f seconds\n", 
-      done, rwrandom_read_completed, difftime(now, begin));
+    fprintf(stderr, "rwrandom completes %d read ops (out of %d) in %.3f seconds, %d found, wait %.4f sec (%d)\n", 
+      done, rwrandom_read_completed, difftime(now, begin), found, ct_waited/1000000, c_waited);
 
   }
 
@@ -1008,6 +1012,8 @@ class Benchmark {
     fprintf(stderr, "RWRandom_Write will write %d ops\n", wnum);
 
     int done = 0;
+    double ct_waited = 0;
+    int c_waited = 0;
     for (i = 0; done < wnum; i++) {
       char key[100];
       time(&now);
@@ -1024,21 +1030,24 @@ class Benchmark {
         done ++;
 
         if (bnum == entries_per_batch_) {
-                bnum = 0;
-                s = db_->Write(write_options_, &batch);
-                batch.Clear();
-                if (!s.ok()) {
-                        fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-                        exit(1);
-                }
-                thread->stats.AddBytes(bytes);
-                bytes = 0;
+          bnum = 0;
+          DEBUG_MEASURE(2, (s = db_->Write(write_options_, &batch)), "RW--Write");
+          batch.Clear();
+          if (!s.ok()) {
+            fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+            exit(1);
+          }
+          thread->stats.AddBytes(bytes);
+          bytes = 0;
         }
     	thread->stats.FinishedWriteOp();
 	rwrandom_write_completed++;
       } else {
         DEBUG_INFO(2, "write pauses %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
 	Env::Default()->SleepForMicroseconds(RW_WAIT_US);
+
+        ct_waited += RW_WAIT_US;
+        c_waited ++;
       }
       
       if (FLAGS_countdown > 0 && (i+1) % 100 == 0) {
@@ -1050,8 +1059,8 @@ class Benchmark {
     }
 
     time(&now);
-    fprintf(stderr, "rwrandom completes %d write ops in %.3f seconds\n", 
-      done, difftime(now, begin));
+    fprintf(stderr, "rwrandom completes %d write ops in %.3f seconds, wait %.3f sec (%d)\n", 
+      done, difftime(now, begin), ct_waited/1000000, c_waited);
 
   }
 

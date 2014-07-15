@@ -371,7 +371,8 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
     	Slice *sdata = data.clone();
     	OPQ_ADD_APPEND(OPQ, sfp_, sdata);
     } else {
-        Status ss = sfp_->Append(data);
+        Status ss;
+        DEBUG_MEASURE(2, (ss = sfp_->Append(data)), "sfp_->Append");
         if (!ss.ok())
 	    return ss;
     }

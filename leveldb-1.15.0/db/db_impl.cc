@@ -1248,7 +1248,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
   }
 
   // May temporarily unlock and wait.
-  Status status = MakeRoomForWrite(my_batch == NULL);
+  Status status;
+  DEBUG_MEASURE(2, (status = MakeRoomForWrite(my_batch == NULL)), "DBImpl::Write--MakeRoom");
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
   if (status.ok() && my_batch != NULL) {  // NULL batch is for compactions
@@ -1271,7 +1272,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
         }
       }
       if (status.ok()) {
-        status = WriteBatchInternal::InsertInto(updates, mem_);
+        DEBUG_MEASURE(2, (status = WriteBatchInternal::InsertInto(updates, mem_)), "DBImpl::Write--Insert");
       }
       mutex_.Lock();
       if (sync_error) {
