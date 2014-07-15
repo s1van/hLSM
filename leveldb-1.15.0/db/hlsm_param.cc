@@ -21,6 +21,7 @@ DBMode mode("Default");
 bool preload_metadata = 1;
 int kMinKBPerSeek = 16;
 int kMaxLevel = -1;
+int MmapLimit = 1024;
 
 const char *primary_storage_path = NULL;
 const char *secondary_storage_path = NULL;
@@ -31,6 +32,7 @@ bool run_compaction = true;
 bool iterator_prefetch = false;
 bool raw_prefetch = false;
 bool append_by_opq = false;
+bool use_mmap_file = true;
 
 int debug_level = 0;
 char* debug_file = NULL;

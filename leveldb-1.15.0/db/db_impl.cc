@@ -755,7 +755,7 @@ void DBImpl::BackgroundCompaction() {
   } else {
 	DEBUG_INFO(1, "DoCompactionWork\n");
     CompactionState* compact = new CompactionState(c);
-    status = DoCompactionWork(compact);
+    DEBUG_MEASURE_RECORD(2, (status = DoCompactionWork(compact)), "DoCompactionWork");
     if (!status.ok()) {
       RecordBackgroundError(status);
     }
@@ -933,7 +933,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   // Release mutex while we're actually doing the compaction work
   mutex_.Unlock();
 
-  Iterator* input = versions_->MakeInputIterator(compact->compaction, true);
+  Iterator* input;
+  DEBUG_MEASURE_RECORD(2, (input = versions_->MakeInputIterator(compact->compaction, true)), 
+      "DoCompactionWork--MakeInputIterator");
 
   input->SeekToFirst();
   Status status;
@@ -947,7 +949,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       const uint64_t imm_start = env_->NowMicros();
       mutex_.Lock();
       if (imm_ != NULL) {
-        CompactMemTable();
+        DEBUG_MEASURE_RECORD(2, (CompactMemTable()), "DoCompactionWork--CompactMemTable");
         bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
       }
       mutex_.Unlock();
@@ -957,7 +959,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     Slice key = input->key();
     if (compact->compaction->ShouldStopBefore(key) &&
         compact->builder != NULL) {
-      status = FinishCompactionOutputFile(compact, input);
+      DEBUG_MEASURE_RECORD(2, (status = FinishCompactionOutputFile(compact, input)), 
+          "DoCompactionWork--FinishCompactionOutputFile");
       if (!status.ok()) {
         break;
       }

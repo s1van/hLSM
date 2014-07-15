@@ -51,7 +51,7 @@ Status Table::Open(const Options& options,
                    uint64_t size,
                    Table** table, bool is_sequential) {
 
-  DEBUG_INFO(2, "filename: %s\n", file->GetFileName().c_str());
+  DEBUG_INFO(3, "filename: %s\n", file->GetFileName().c_str());
 
   *table = NULL;
   if (size < Footer::kEncodedLength) {
@@ -75,7 +75,7 @@ Status Table::Open(const Options& options,
     s = ReadBlock(file, ReadOptions(), footer.index_handle(), &contents);
     if (s.ok()) {
       index_block = new Block(contents);
-      DEBUG_INFO(2, "table size: %lu\tindex size: %lu\n", size, contents.data.size());
+      DEBUG_INFO(3, "table size: %lu\tindex size: %lu\n", size, contents.data.size());
     }
   }
 
@@ -92,7 +92,7 @@ Status Table::Open(const Options& options,
 
     if (hlsm::is_primary_file(file->GetFileName())) {
     	rep->primary_ = file;
-	DEBUG_INFO(2, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
+	DEBUG_INFO(3, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
     } else {
     	rep->secondary_ = file;
     }
@@ -120,7 +120,7 @@ void Table::ReadMeta(const Footer& footer) {
     return;
   }
   Block* meta = new Block(contents);
-  DEBUG_INFO(2, "metaindex size: %lu\n", contents.data.size());
+  DEBUG_INFO(3, "metaindex size: %lu\n", contents.data.size());
 
   Iterator* iter = meta->NewIterator(BytewiseComparator());
   std::string key = "filter.";
@@ -147,7 +147,7 @@ void Table::ReadFilter(const Slice& filter_handle_value) {
   if (!ReadBlock(PickFileHandler(rep_), opt, filter_handle, &block).ok()) {
     return;
   }
-  DEBUG_INFO(2, "filter size: %lu\n", block.data.size());
+  DEBUG_INFO(3, "filter size: %lu\n", block.data.size());
   if (block.heap_allocated) {
     rep_->filter_data = block.data.data();     // Will need to delete later
   }

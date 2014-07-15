@@ -939,9 +939,9 @@ class Benchmark {
       done++;
       if (isFound) {
         found++;
-        DEBUG_INFO(2, "read found %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
+        DEBUG_INFO(3, "read found %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
       } else {
-        DEBUG_INFO(2, "Not Found since %s\n",s.ToString().c_str() );
+        DEBUG_INFO(3, "Not Found since %s\n",s.ToString().c_str() );
       }
 
       thread->stats.FinishedReadOp();
@@ -954,7 +954,7 @@ class Benchmark {
         (rwrandom_wspeed == 0 &&
         rwrandom_read_completed > (rwrandom_read_completed + rwrandom_write_completed) 
           * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
-        DEBUG_INFO(2, "read pauses: read %d, write %d\n", 
+        DEBUG_INFO(3, "read pauses: read %d, write %d\n", 
           rwrandom_read_completed, rwrandom_write_completed);
         Env::Default()->SleepForMicroseconds(wait_us);
 
@@ -962,7 +962,7 @@ class Benchmark {
         c_waited ++;
         waited ++;
         if (waited % 100 == 0) {
-          DEBUG_INFO(2, "waited = %d, wait_us = %d\n", waited, wait_us);
+          DEBUG_INFO(3, "waited = %d, wait_us = %d\n", waited, wait_us);
           wait_us *= 2;
         }
       } else {
@@ -1043,7 +1043,7 @@ class Benchmark {
     	thread->stats.FinishedWriteOp();
 	rwrandom_write_completed++;
       } else {
-        DEBUG_INFO(2, "write pauses %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
+        DEBUG_INFO(3, "write pauses %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
 	Env::Default()->SleepForMicroseconds(RW_WAIT_US);
 
         ct_waited += RW_WAIT_US;

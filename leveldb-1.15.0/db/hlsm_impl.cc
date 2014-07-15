@@ -330,7 +330,7 @@ int init(leveldb::Env* env_) {
 	} else if (hlsm::config::mode.isFullMirror()) {
 		full_mirror = true;
 		mirror_start_level = 0;
-		seqential_read_from_primary = true; // primary is SSD, secondary is HDD
+		seqential_read_from_primary = false; // primary is SSD, secondary is HDD
 		random_read_from_primary = true;
 		meta_on_primary = true;
 		log_on_primary = true;
@@ -424,7 +424,7 @@ uint64_t TableLevel::getLatest() {
 }
 
 int TableLevel::add(uint64_t key, int raw_level){
-	DEBUG_INFO(2, "level: %d\tfile number: %lu\n", raw_level, key);
+	DEBUG_INFO(3, "level: %d\tfile number: %lu\n", raw_level, key);
 	mutex_.Lock();
 	mapping_[key] = raw_level;
 	latest = key;

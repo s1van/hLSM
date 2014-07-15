@@ -75,7 +75,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
     DEBUG_INFO(3, "file = %p\n", file);
 
     if (s.ok()) {
-      DEBUG_INFO(2, "Open %s, %lu\n", file->GetFileName().c_str(), file_number);
+      DEBUG_INFO(3, "Open %s, %lu\n", file->GetFileName().c_str(), file_number);
       s = Table::Open(*options_, file, file_size, &table, is_sequential);
     }
     DEBUG_INFO(3, "s.ok() = %d, table = %p\n", s.ok(), table);

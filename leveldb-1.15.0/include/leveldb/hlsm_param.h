@@ -27,6 +27,7 @@ extern DBMode mode;
 extern bool preload_metadata;
 extern int kMinKBPerSeek;
 extern int kMaxLevel;
+extern int MmapLimit;
 
 extern const char *primary_storage_path;	// primary path holds all the .ldb files
 extern const char *secondary_storage_path;
@@ -37,6 +38,7 @@ extern bool run_compaction;
 extern bool iterator_prefetch;
 extern bool raw_prefetch;
 extern bool append_by_opq;
+extern bool use_mmap_file;
 
 extern int debug_level;	// default value 0 is; info whose level is smaller or equal to debug_level will be displayed
 extern char* debug_file;// where to dump the debug info

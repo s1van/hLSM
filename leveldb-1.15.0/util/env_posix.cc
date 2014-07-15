@@ -83,7 +83,7 @@ class PosixRandomAccessFile: public RandomAccessFile {
  public:
   PosixRandomAccessFile(const std::string& fname, int fd)
       : fd_(fd) { filename_ = fname;
-    DEBUG_INFO(2, "%s\n", fname.c_str());
+    DEBUG_INFO(3, "%s\n", fname.c_str());
   }
   virtual ~PosixRandomAccessFile() { close(fd_); }
 
@@ -107,7 +107,7 @@ class MmapLimiter {
  public:
   // Up to 1000 mmaps for 64-bit binaries; none for smaller pointer sizes.
   MmapLimiter() {
-    SetAllowed(sizeof(void*) >= 8 ? 1000 : 0);
+    SetAllowed(sizeof(void*) >= 8 ? hlsm::config::MmapLimit : 0);
   }
 
   // If another mmap slot is available, acquire it and return true.
@@ -329,13 +329,19 @@ class PosixEnv : public Env {
     Status s;
     std::string fname = hlsm::relocate_file(fname_);
     int fd = open(fname.c_str(), O_RDONLY);
+    bool use_mmap = hlsm::config::use_mmap_file && // !hlsm::config::mode.isDefault() &&
+          ((hlsm::is_primary_file(fname_) && hlsm::runtime::seqential_read_from_primary)
+           || (!hlsm::is_primary_file(fname_) && !hlsm::runtime::seqential_read_from_primary) );
+
     if (fd < 0) {
       s = IOError(fname, errno);
-    } else if (mmap_limit_.Acquire()) {
+    } else if (use_mmap && mmap_limit_.Acquire()) {
+      DEBUG_INFO(2, "%s\n", fname_.c_str());
       uint64_t size;
       s = GetFileSize(fname, &size);
       if (s.ok()) {
-        void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+        int flags = MAP_SHARED;// MAP_PRIVATE|MAP_POPULATE
+        void* base = mmap(NULL, size, PROT_READ, flags, fd, 0);
         if (base != MAP_FAILED) {
           *result = new PosixMmapReadableFile(fname, base, size, &mmap_limit_);
         } else {
