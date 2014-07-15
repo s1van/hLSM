@@ -33,6 +33,7 @@
 #include "leveldb/comparator.h"
 #include "leveldb/table_builder.h"
 #include "util/coding.h"
+#include "leveldb/hlsm.h"
 
 namespace leveldb {
 
@@ -40,13 +41,28 @@ BlockBuilder::BlockBuilder(const Options* options)
     : options_(options),
       restarts_(),
       counter_(0),
-      finished_(false) {
+      finished_(false),
+      buffer_(new std::string() ) {
   assert(options->block_restart_interval >= 1);
   restarts_.push_back(0);       // First restart point is at offset 0
 }
 
+BlockBuilder::~BlockBuilder(){
+	DEBUG_INFO(3, "%lu\n", buffer_->size());
+	if (hlsm::runtime::use_opq_thread) {
+		OPQ_ADD_DEL_STRBUF(hlsm::runtime::op_queue, buffer_);
+	} else {
+		delete buffer_;
+	}
+}
+
 void BlockBuilder::Reset() {
-  buffer_.clear();
+	if (hlsm::runtime::use_opq_thread && hlsm::runtime::delayed_buf_reset) {
+		DEBUG_INFO(3, "%lu\n", buffer_->size());
+		OPQ_ADD_DEL_STRBUF(hlsm::runtime::op_queue, buffer_);
+		buffer_ = new std::string();
+	}
+  buffer_->clear();
   restarts_.clear();
   restarts_.push_back(0);       // First restart point is at offset 0
   counter_ = 0;
@@ -55,7 +71,7 @@ void BlockBuilder::Reset() {
 }
 
 size_t BlockBuilder::CurrentSizeEstimate() const {
-  return (buffer_.size() +                        // Raw data buffer
+  return (buffer_->size() +                        // Raw data buffer
           restarts_.size() * sizeof(uint32_t) +   // Restart array
           sizeof(uint32_t));                      // Restart array length
 }
@@ -63,18 +79,18 @@ size_t BlockBuilder::CurrentSizeEstimate() const {
 Slice BlockBuilder::Finish() {
   // Append restart array
   for (size_t i = 0; i < restarts_.size(); i++) {
-    PutFixed32(&buffer_, restarts_[i]);
+    PutFixed32(buffer_, restarts_[i]);
   }
-  PutFixed32(&buffer_, restarts_.size());
+  PutFixed32(buffer_, restarts_.size());
   finished_ = true;
-  return Slice(buffer_);
+  return Slice(reinterpret_cast<const std::string &>(*buffer_));
 }
 
 void BlockBuilder::Add(const Slice& key, const Slice& value) {
   Slice last_key_piece(last_key_);
   assert(!finished_);
   assert(counter_ <= options_->block_restart_interval);
-  assert(buffer_.empty() // No values yet?
+  assert(buffer_->empty() // No values yet?
          || options_->comparator->Compare(key, last_key_piece) > 0);
   size_t shared = 0;
   if (counter_ < options_->block_restart_interval) {
@@ -85,19 +101,19 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
     }
   } else {
     // Restart compression
-    restarts_.push_back(buffer_.size());
+    restarts_.push_back(buffer_->size());
     counter_ = 0;
   }
   const size_t non_shared = key.size() - shared;
 
   // Add "<shared><non_shared><value_size>" to buffer_
-  PutVarint32(&buffer_, shared);
-  PutVarint32(&buffer_, non_shared);
-  PutVarint32(&buffer_, value.size());
+  PutVarint32(buffer_, shared);
+  PutVarint32(buffer_, non_shared);
+  PutVarint32(buffer_, value.size());
 
   // Add string delta to buffer_ followed by value
-  buffer_.append(key.data() + shared, non_shared);
-  buffer_.append(value.data(), value.size());
+  buffer_->append(key.data() + shared, non_shared);
+  buffer_->append(value.data(), value.size());
 
   // Update state
   last_key_.resize(shared);

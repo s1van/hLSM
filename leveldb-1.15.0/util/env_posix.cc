@@ -201,7 +201,7 @@ class PosixWritableFile : public WritableFile {
     }
   }
 
-  virtual Status Append(const Slice& data) {
+  virtual Status Append(const Slice& data, bool delayed_buf_reset = false) {
     size_t r = fwrite_unlocked(data.data(), 1, data.size(), file_);
     if (r != data.size()) {
       return IOError(filename_, errno);

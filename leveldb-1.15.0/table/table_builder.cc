@@ -167,18 +167,20 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
       break;
     }
   }
-  WriteRawBlock(block_contents, type, handle);
+  bool delayed_buf_reset = (type == kNoCompression);
+  WriteRawBlock(block_contents, type, handle, delayed_buf_reset);
   r->compressed_output.clear();
   block->Reset();
 }
 
 void TableBuilder::WriteRawBlock(const Slice& block_contents,
                                  CompressionType type,
-                                 BlockHandle* handle) {
+                                 BlockHandle* handle,
+                                 bool delayed_buf_reset) {
   Rep* r = rep_;
   handle->set_offset(r->offset);
   handle->set_size(block_contents.size());
-  r->status = r->file->Append(block_contents);
+  r->status = r->file->Append(block_contents, delayed_buf_reset);
   if (r->status.ok()) {
     char trailer[kBlockTrailerSize];
     trailer[0] = type;

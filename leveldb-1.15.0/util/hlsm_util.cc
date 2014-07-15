@@ -79,6 +79,11 @@ static void *opq_helper(void * arg) {
 				ssize_t ret = pwrite(fd, buf, size, offset);
 				free(buf);
 
+			} else if (op->type == MDeleteStrBuffer) {
+				std::string* buf = (std::string*) op->ptr1;	//buffer to sync
+				DEBUG_INFO(3, "MDeleteStrBuffer, size = %lu\n", buf->size());
+				delete buf;
+
 			} else if (op->type == MBufClose) {
 				FILE * fp = (FILE *) op->ptr1;
 				std::string *fname = (std::string*) (op->ptr2);
@@ -98,6 +103,11 @@ static void *opq_helper(void * arg) {
 				free((void*) (((const Slice *) op->ptr2)->data() ));	//it is malloc-ed
 				delete ((Slice *) op->ptr2);
 				DEBUG_INFO(3, "MAppend\tsize: %ld\tstatus: %s\n", ((const Slice *) op->ptr2)->size(), s.ToString().c_str());
+
+			} else if (op->type == MAppendOnly) {
+				sfp = (WritableFile*) op->ptr1;	//file handler
+				Status s = sfp->Append((const Slice &) op->slice);
+				DEBUG_INFO(3, "MAppendOnly\tsize: %ld\tstatus: %s\n", ((const Slice &) op->slice).size(), s.ToString().c_str());
 
 			} else if (op->type == MClose) {
 				sfp = (WritableFile *) op->ptr1;	//file handler
@@ -184,7 +194,7 @@ class PosixWritableFile : public leveldb::WritableFile {
     }
   }
 
-  virtual Status Append(const Slice& data) {
+  virtual Status Append(const Slice& data, bool delayed_buf_reset = false) {
     size_t r = fwrite_unlocked(data.data(), 1, data.size(), file_);
     if (r != data.size()) {
       return IOError(filename_, errno);
@@ -285,7 +295,7 @@ class PosixBufferFile : public leveldb::WritableFile {
 	return filename_;
   }
 
-  virtual Status Append(const Slice& data) {
+  virtual Status Append(const Slice& data, bool delayed_buf_reset = false) {
     const char* src = data.data();
 
     size_t left = data.size();
@@ -366,16 +376,25 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
     delete fp_;
   }
 
-  Status FullMirror_PosixWritableFile::Append(const Slice& data) {
-    if (USE_OPQ && hlsm::config::append_by_opq) {
+  Status FullMirror_PosixWritableFile::Append(const Slice& data, bool delayed_buf_reset) {
+  	if (USE_OPQ && hlsm::runtime::delayed_buf_reset) {
+  		if (delayed_buf_reset) {
+  			OPQ_ADD_APPEND_ONLY(OPQ, sfp_, data );
+  		} else { // make a copy and append
+      	Slice *sdata;
+      	DEBUG_MEASURE_RECORD(2, (sdata = data.clone()), "Append--clone");
+      	OPQ_ADD_APPEND(OPQ, sfp_, sdata);
+  		}
+
+  	} else if (USE_OPQ && hlsm::config::append_by_opq) {
     	Slice *sdata;
-	DEBUG_MEASURE_RECORD(2, (sdata = data.clone()), "Append--clone");
+    	DEBUG_MEASURE_RECORD(2, (sdata = data.clone()), "Append--clone");
     	OPQ_ADD_APPEND(OPQ, sfp_, sdata);
     } else {
-        Status ss;
-        DEBUG_MEASURE_RECORD(2, (ss = sfp_->Append(data)), "sfp_->Append");
-        if (!ss.ok())
-	    return ss;
+    	Status ss;
+    	DEBUG_MEASURE_RECORD(2, (ss = sfp_->Append(data)), "sfp_->Append");
+    	if (!ss.ok())
+    		return ss;
     }
 
     Status s = fp_->Append(data);

@@ -77,7 +77,7 @@ class TableBuilder {
  private:
   bool ok() const { return status().ok(); }
   void WriteBlock(BlockBuilder* block, BlockHandle* handle);
-  void WriteRawBlock(const Slice& data, CompressionType, BlockHandle* handle);
+  void WriteRawBlock(const Slice& data, CompressionType, BlockHandle* handle, bool delayed_buf_reset = false);
 
   struct Rep;
   Rep* rep_;

@@ -61,6 +61,7 @@ extern int mirror_start_level;
 extern int top_mirror_end_level;
 extern int top_pure_mirror_end_level; // so mirrored file is not deleted at the same time
 extern bool use_cursor_compaction;
+extern bool delayed_buf_reset;
 
 extern bool seqential_read_from_primary;
 extern bool random_read_from_primary;

@@ -38,7 +38,7 @@ private:
 public:
 	FullMirror_PosixWritableFile(const std::string&, FILE*);
 	~FullMirror_PosixWritableFile();
-	virtual leveldb::Status Append(const leveldb::Slice&);
+	virtual leveldb::Status Append(const leveldb::Slice&, bool delayed_buf_reset = false);
 	virtual leveldb::Status Close();
 	virtual leveldb::Status Flush();
 	virtual leveldb::Status Sync();
@@ -52,8 +52,8 @@ public:
 //1. Status Append(const Slice& data)
 //2. Status Sync()
 //3. Status Close()
-typedef enum { MAppend = 1, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose,
-	MTruncate, MCopyFile, MCopyDeletedFile, MIterPrefetch, MRawPrefetch} mio_op_t;
+typedef enum { MAppend = 1, MAppendOnly, MSync, MClose, MDelete, MHalt, MBufSync, MBufClose,
+	MTruncate, MCopyFile, MCopyDeletedFile, MIterPrefetch, MRawPrefetch, MDeleteStrBuffer} mio_op_t;
 
 typedef struct {
 	mio_op_t type;
@@ -63,6 +63,7 @@ typedef struct {
 	size_t size;
 	uint64_t offset;
 	uint64_t lu_int;
+	leveldb::Slice slice;
 } *mio_op, mio_op_s;
 
 struct entry_ {
@@ -159,6 +160,13 @@ typedef struct {
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
+#define OPQ_ADD_DEL_STRBUF(q_, buf_)	do{	\
+		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
+		op_->type = MDeleteStrBuffer;\
+		op_->ptr1 = buf_;	\
+		OPQ_ADD(q_, op_);	\
+	} while(0)
+
 #define OPQ_ADD_CLOSE(q_, mfp_)	do{	\
 		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
 		op_->type = MClose;	\
@@ -192,6 +200,15 @@ typedef struct {
 		op_->type = MAppend;	\
 		op_->ptr1 = mfp_;	\
 		op_->ptr2 = (void *)slice_;	\
+		OPQ_ADD(q_, op_);	\
+	} while(0)
+
+// make a copy of the slice (buffer is not copied)
+#define OPQ_ADD_APPEND_ONLY(q_, mfp_, slice_)do{	\
+		mio_op op_ = (mio_op)malloc(sizeof(mio_op_s));	\
+		op_->type = MAppendOnly;	\
+		op_->ptr1 = mfp_;	\
+		op_->slice = slice_;	\
 		OPQ_ADD(q_, op_);	\
 	} while(0)
 
