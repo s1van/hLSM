@@ -336,6 +336,7 @@ int init(leveldb::Env* env_) {
 		log_on_primary = true;
 		use_opq_thread = true;
 		leveldb::config::kMaxMemCompactLevel = 0;
+		hlsm::config::append_by_opq = false;
 
 	} else if (hlsm::config::mode.isPartialMirror()) {
 		full_mirror = false;

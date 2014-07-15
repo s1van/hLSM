@@ -368,7 +368,8 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
 
   Status FullMirror_PosixWritableFile::Append(const Slice& data) {
     if (USE_OPQ && hlsm::config::append_by_opq) {
-    	Slice *sdata = data.clone();
+    	Slice *sdata;
+	DEBUG_MEASURE_RECORD(2, (sdata = data.clone()), "Append--clone");
     	OPQ_ADD_APPEND(OPQ, sfp_, sdata);
     } else {
         Status ss;
