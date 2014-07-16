@@ -255,7 +255,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
       // Not found
     } else {
       Iterator* block_iter; 
-      DEBUG_MEASURE_RECORD(2, (block_iter = BlockReader(this, options, iiter->value(), is_sequential)),
+      DEBUG_MEASURE_RECORD(1, (block_iter = BlockReader(this, options, iiter->value(), is_sequential)),
 	"InternalGet--BlockReader");
       block_iter->Seek(k);
       if (block_iter->Valid()) {

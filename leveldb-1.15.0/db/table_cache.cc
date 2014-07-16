@@ -153,10 +153,10 @@ Status TableCache::Get(const ReadOptions& options,
                        void (*saver)(void*, const Slice&, const Slice&)) {
   Cache::Handle* handle = NULL;
   Status s;
-  DEBUG_MEASURE_RECORD(2, (s = FindTable(file_number, file_size, &handle)), "Get--FindTable");
+  DEBUG_MEASURE_RECORD(1, (s = FindTable(file_number, file_size, &handle)), "Get--FindTable");
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
-    DEBUG_MEASURE_RECORD(2, (s = t->InternalGet(options, k, arg, saver, false)), "TableCache::Get--InternatGet");
+    DEBUG_MEASURE_RECORD(1, (s = t->InternalGet(options, k, arg, saver, false)), "TableCache::Get--InternatGet");
     cache_->Release(handle);
   }
   return s;

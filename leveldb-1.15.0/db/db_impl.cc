@@ -1183,7 +1183,7 @@ Status DBImpl::Get(const ReadOptions& options,
     	  DEBUG_MEASURE_RECORD(1, (s = current->Get(options, lkey, value, &stats)), "DBImpl::Get--Version::Get");
       } else {
     	  Version* current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy();
-    	  s = current_lazy->Get(options, lkey, value, &stats);
+    	  DEBUG_MEASURE_RECORD(1, (s = current_lazy->Get(options, lkey, value, &stats)), "DBImpl::Get--LazyVersion:Get");
       }
       have_stat_update = true;
     }
