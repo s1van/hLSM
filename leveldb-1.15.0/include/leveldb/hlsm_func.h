@@ -172,6 +172,9 @@ inline size_t get_bloom_filter_probe_num (int bits_per_key) {
 	return static_cast<size_t>(raw_probe_num * 0.69);  // 0.69 =~ ln(2)
 }
 
+
+std::string get_table_path(uint64_t, bool, bool proper = true);
+
 } // hlsm
 
 #endif

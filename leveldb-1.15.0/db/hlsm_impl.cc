@@ -475,5 +475,14 @@ int delete_secondary_table(leveldb::Env* const env, uint64_t number) {
 	return 0;
 }
 
+// proper = true implies getting the proper file
+std::string get_table_path(uint64_t number, bool is_seq, bool proper) {
+	bool from_primary = read_from_primary(is_seq);
+	if ( (from_primary && proper) || (!from_primary && !proper) || hlsm::runtime::FileNameHash::inuse(number))
+		return leveldb::TableFileName(hlsm::config::primary_storage_path, number);
+	else
+		return leveldb::TableFileName(hlsm::config::secondary_storage_path, number);
+}
+
 
 } // hlsm

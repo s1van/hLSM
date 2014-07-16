@@ -53,7 +53,8 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   DEBUG_INFO(3, "file_number: %lu, sequential? %d\n", file_number, is_sequential);
   *handle = cache_->Lookup(key);
   if (*handle == NULL) {
-    std::string fname = TableFileName(dbname_, file_number);
+    std::string fname = hlsm::get_table_path(file_number, is_sequential, true);
+    DEBUG_INFO(3, "file_name = %s, is_seq = %d\n", fname.c_str(), is_sequential);
 
     RandomAccessFile* file = NULL;
     Table* table = NULL;
@@ -65,14 +66,13 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       }
     }
 
-    // maybe the file is on the secondary store
+    // maybe the file is on the other store
     if (!s.ok() && hlsm::config::mode.ishLSM() ) {
-    	std::string sfname = TableFileName(hlsm::config::secondary_storage_path, file_number);
+    	std::string sfname = hlsm::get_table_path(file_number, is_sequential, false);
     	if (env_->NewRandomAccessFile(sfname, &file).ok()) {
     		s = Status::OK();
     	}
     }
-    DEBUG_INFO(3, "file = %p\n", file);
 
     if (s.ok()) {
       DEBUG_INFO(3, "Open %s, %lu\n", file->GetFileName().c_str(), file_number);
