@@ -736,6 +736,7 @@ Compaction* LazyVersionSet::PickCompaction() {
   // the compactions triggered by seeks.
   const bool size_compaction = (current_->compaction_score_ >= 1);
   const bool seek_compaction = (current_->file_to_compact_ != NULL);
+  DEBUG_INFO(2, "size_c = %d, seek_c = %d\n", size_compaction, seek_compaction);
   if (size_compaction) {
     level = current_->compaction_level_;
     assert(level >= 0);

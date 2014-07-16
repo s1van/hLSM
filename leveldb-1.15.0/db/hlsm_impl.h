@@ -50,12 +50,15 @@ inline double calculate_compaction_score(int level, std::vector<leveldb::FileMet
 	if (files[level].size() == 0)
 		return score;
 
-	if (level % 2 == 1) { // LX.L << LX.R > L(X+1).R
-		score = std::max( TotalFileSize(files[level]) / MaxBytesForLevel(level)	// LX.L
-			,TotalFileSize(files[level-1]) / MaxBytesForLevel(level-1));		// LX.R
+        if (level == 1) {
+		score = std::max( TotalFileSize(files[level]) / MaxBytesForLevel(level) // LX.L
+			, (files[level-1].size() / (double)leveldb::config::kL0_StopWritesTrigger) );    // LX.R
+	} else if (level % 2 == 1) { // LX.L << LX.R > L(X+1).R
+		score = std::max( TotalFileSize(files[level]) / MaxBytesForLevel(level) // LX.L
+			,TotalFileSize(files[level-1]) / MaxBytesForLevel(level-1));    // LX.R
 	} else { // LX.R < L(X-1).L >> LX.L
 		if (TotalFileSize(files[level+1]) == 0) // LX.L
-			score = TotalFileSize(files[level])/ MaxBytesForLevel(level);	// LX.R
+			score = TotalFileSize(files[level])/ MaxBytesForLevel(level);   // LX.R
 		else
 			score = 0; // this guarantees that LX.R won't be compacted since the score of LX.L is larger than 0
 	}

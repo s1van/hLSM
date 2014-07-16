@@ -92,7 +92,7 @@ inline double MaxBytesForLevel(int level) {
   // Note: the result for level zero is not really used since we set
   // the level-0 compaction threshold based on number of files.
   
-  // Level 0 and Level 1 has the same size due to cursor, which is 
+  // Level 0 and Level 1 in fact has the same size due to cursor, which is 
   //    determined by not the kL0_Size, but the kL0_StopWritesTrigger
   double result = leveldb::config::kL0_Size * 1048576.0;  
 

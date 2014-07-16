@@ -933,7 +933,7 @@ class Benchmark {
       time(&now);
       const int64_t k = thread->rand.Next64() % FLAGS_read_span;
       snprintf(key, sizeof(key), "%020ld", k);
-      DEBUG_MEASURE(2, (s = db_->Get(options, key, &value)), "RW--Get" );
+      DEBUG_MEASURE_RECORD(2, (s = db_->Get(options, key, &value)), "RW--Get" );
       isFound = s.ok();
 
       done++;
@@ -1033,7 +1033,7 @@ class Benchmark {
 
         if (bnum == entries_per_batch_) {
           bnum = 0;
-          DEBUG_MEASURE(2, (s = db_->Write(write_options_, &batch)), "RW--Write");
+          DEBUG_MEASURE_RECORD(2, (s = db_->Write(write_options_, &batch)), "RW--Write");
           batch.Clear();
           if (!s.ok()) {
             fprintf(stderr, "put error: %s\n", s.ToString().c_str());

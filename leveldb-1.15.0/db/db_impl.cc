@@ -720,6 +720,8 @@ void DBImpl::BackgroundCompaction() {
     c = versions_->PickCompaction();
   }
 
+  DEBUG_INFO(2, "Compaction Starts, c = %p\n", c);
+
   Status status;
   if (c == NULL) {
     // Nothing to do
