@@ -57,6 +57,9 @@ extern FILE *debug_fd;	// initialized using hlsm::config::debug_file (default: s
 extern leveldb::port::Mutex debug_mutex_;
 extern hlsm::NamedCounter counters;
 
+// used only by DeleteFile in env_posix.cc with single thread
+extern bool delete_primary_only;
+
 extern bool  use_opq_thread;
 extern bool full_mirror;
 extern int mirror_start_level;
@@ -64,6 +67,9 @@ extern int top_mirror_end_level;
 extern int top_pure_mirror_end_level; // so mirrored file is not deleted at the same time
 extern bool use_cursor_compaction;
 extern bool delayed_buf_reset;
+
+// used only by DeleteFile in env_posix.cc with single thread
+extern bool delete_primary_only;
 
 extern bool seqential_read_from_primary;
 extern bool random_read_from_primary;

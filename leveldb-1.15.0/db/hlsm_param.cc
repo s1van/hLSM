@@ -51,6 +51,8 @@ FILE *debug_fd = stderr;
 leveldb::port::Mutex debug_mutex_;
 hlsm::NamedCounter counters;
 
+bool delete_primary_only = false;
+
 bool use_opq_thread = false;
 bool full_mirror = false;
 int mirror_start_level = 1028;

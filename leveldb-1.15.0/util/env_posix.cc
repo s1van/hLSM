@@ -415,8 +415,10 @@ class PosixEnv : public Env {
       return IOError(fname, errno);
     }
     if (hlsm::is_mirrored_write(fname, true)) {
-    	OPQ_ADD_DELETE(hlsm::runtime::op_queue,
-    			new std::string(PRIMARY_TO_SECONDARY_FILE(fname)));
+    	if (!hlsm::runtime::delete_primary_only) {
+    		OPQ_ADD_DELETE(hlsm::runtime::op_queue,
+    				new std::string(PRIMARY_TO_SECONDARY_FILE(fname)));
+    	}
     	hlsm::runtime::table_level.remove(hlsm::table_name_to_number(fname));
     }
     DEBUG_INFO(2, "%s\n", fname.c_str());

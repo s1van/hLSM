@@ -270,12 +270,18 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
         if (type == kTableFile && lazy_live.find(number) == lazy_live.end()) {
           table_cache_->Evict(number);
         }
-	// if the file is in use, delete it next time
-	if (on_the_fly.find(number) == on_the_fly.end() ) {
+        // if the file is in use, delete it next time
+        if (on_the_fly.find(number) == on_the_fly.end() ) {
         	Log(options_.info_log, "Delete type=%d #%lld\n",
-            	int(type), static_cast<unsigned long long>(number));
+        			int(type), static_cast<unsigned long long>(number));
+
+        	if (lazy_live.find(number) != lazy_live.end()) {
+          	// implies that same file appears in both mirrored level and non-mirrored level
+        		hlsm::runtime::delete_primary_only = true;
+        	}
         	env_->DeleteFile(dbname_ + "/" + filenames[i]);
-	}
+        	hlsm::runtime::delete_primary_only = false;
+        }
       }
     }
   }
