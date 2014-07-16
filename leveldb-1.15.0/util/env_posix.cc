@@ -329,7 +329,7 @@ class PosixEnv : public Env {
     Status s;
     std::string fname = hlsm::relocate_file(fname_);
     int fd = open(fname.c_str(), O_RDONLY);
-    bool use_mmap = hlsm::config::use_mmap_file && // !hlsm::config::mode.isDefault() &&
+    bool use_mmap = hlsm::config::use_mmap_file && !hlsm::config::mode.isDefault() &&
           ((hlsm::is_primary_file(fname_) && hlsm::runtime::seqential_read_from_primary)
            || (!hlsm::is_primary_file(fname_) && !hlsm::runtime::seqential_read_from_primary) );
 
