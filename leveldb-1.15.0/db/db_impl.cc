@@ -757,7 +757,7 @@ void DBImpl::BackgroundCompaction() {
   } else {
 	DEBUG_INFO(1, "DoCompactionWork\n");
     CompactionState* compact = new CompactionState(c);
-    DEBUG_MEASURE_RECORD(2, (status = DoCompactionWork(compact)), "DoCompactionWork");
+    DEBUG_MEASURE_RECORD(1, (status = DoCompactionWork(compact)), "DoCompactionWork");
     if (!status.ok()) {
       RecordBackgroundError(status);
     }
@@ -936,7 +936,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   mutex_.Unlock();
 
   Iterator* input;
-  DEBUG_MEASURE_RECORD(2, (input = versions_->MakeInputIterator(compact->compaction, true)), 
+  DEBUG_MEASURE_RECORD(1, (input = versions_->MakeInputIterator(compact->compaction, true)), 
       "DoCompactionWork--MakeInputIterator");
 
   input->SeekToFirst();
@@ -951,7 +951,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       const uint64_t imm_start = env_->NowMicros();
       mutex_.Lock();
       if (imm_ != NULL) {
-        DEBUG_MEASURE_RECORD(2, (CompactMemTable()), "DoCompactionWork--CompactMemTable");
+        DEBUG_MEASURE_RECORD(1, (CompactMemTable()), "DoCompactionWork--CompactMemTable");
         bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
       }
       mutex_.Unlock();
@@ -961,7 +961,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     Slice key = input->key();
     if (compact->compaction->ShouldStopBefore(key) &&
         compact->builder != NULL) {
-      DEBUG_MEASURE_RECORD(2, (status = FinishCompactionOutputFile(compact, input)), 
+      DEBUG_MEASURE_RECORD(1, (status = FinishCompactionOutputFile(compact, input)), 
           "DoCompactionWork--FinishCompactionOutputFile");
       if (!status.ok()) {
         break;
@@ -1172,15 +1172,15 @@ Status DBImpl::Get(const ReadOptions& options,
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
     bool found = false;
-    DEBUG_MEASURE_RECORD(2, (found = mem->Get(lkey, value, &s)), "DBImpl::Get--mem->Get");
+    DEBUG_MEASURE_RECORD(1, (found = mem->Get(lkey, value, &s)), "DBImpl::Get--mem->Get");
 
     if (!found && imm != NULL) { 
-    	DEBUG_MEASURE_RECORD(2, (found = imm->Get(lkey, value, &s)), "DBImpl::Get--imm->Get" );
+    	DEBUG_MEASURE_RECORD(1, (found = imm->Get(lkey, value, &s)), "DBImpl::Get--imm->Get" );
     }
 
     if (!found) {
       if (hlsm::read_from_primary(false) || !hlsm::config::mode.ishLSM()) {
-    	  DEBUG_MEASURE_RECORD(2, (s = current->Get(options, lkey, value, &stats)), "DBImpl::Get--Version::Get");
+    	  DEBUG_MEASURE_RECORD(1, (s = current->Get(options, lkey, value, &stats)), "DBImpl::Get--Version::Get");
       } else {
     	  Version* current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy();
     	  s = current_lazy->Get(options, lkey, value, &stats);
@@ -1256,7 +1256,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
   // May temporarily unlock and wait.
   Status status;
-  DEBUG_MEASURE_RECORD(2, (status = MakeRoomForWrite(my_batch == NULL)), "DBImpl::Write--MakeRoom");
+  DEBUG_MEASURE_RECORD(1, (status = MakeRoomForWrite(my_batch == NULL)), "DBImpl::Write--MakeRoom");
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
   if (status.ok() && my_batch != NULL) {  // NULL batch is for compactions
@@ -1279,7 +1279,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
         }
       }
       if (status.ok()) {
-        DEBUG_MEASURE_RECORD(2, (status = WriteBatchInternal::InsertInto(updates, mem_)), "DBImpl::Write--Insert");
+        DEBUG_MEASURE_RECORD(1, (status = WriteBatchInternal::InsertInto(updates, mem_)), "DBImpl::Write--Insert");
       }
       mutex_.Lock();
       if (sync_error) {
