@@ -87,11 +87,17 @@ inline int64_t TotalFileSize(const std::vector<leveldb::FileMetaData*>& files) {
   return sum;
 }
 
+// when cursor is used
 inline double MaxBytesForLevel(int level) {
   // Note: the result for level zero is not really used since we set
   // the level-0 compaction threshold based on number of files.
-  double result = leveldb::config::kL0_Size * 1048576.0;  // Result for both level-0 and level-1
-  while (level > 1) {
+  
+  // Level 0 and Level 1 has the same size due to cursor, which is 
+  //    determined by not the kL0_Size, but the kL0_StopWritesTrigger
+  double result = leveldb::config::kL0_Size * 1048576.0;  
+
+  // Level 2 and Level 3 now in fact has the size kL0_Size
+  while (level > 3) {
     result *= leveldb::config::kLevelRatio;
     level = level - 2; // LX.L and LX.R have the same maximum size
   }
