@@ -358,6 +358,7 @@ public:
 	}
 
 	static int inuse(uint64_t fnum) {
+		if (hlsm::config::secondary_storage_path == NULL) return 0;
 		return inuse(leveldb::TableFileName(hlsm::config::secondary_storage_path, fnum));
 	}
 

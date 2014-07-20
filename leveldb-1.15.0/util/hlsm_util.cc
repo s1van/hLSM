@@ -171,9 +171,9 @@ static void *opq_helper(void * arg) {
 }
 
 int init_opq_helpler() {
-	INIT_HELPER_AND_QUEUE(OPQ_HELPER, OPQ);
 	hlsm::runtime::hop_queue = OPQ_MALLOC;
 	OPQ_INIT(hlsm::runtime::hop_queue);
+	INIT_HELPER_AND_QUEUE(OPQ_HELPER, OPQ);
 	return 0;
 }
 

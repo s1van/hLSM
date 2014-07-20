@@ -153,7 +153,7 @@ DBImpl::~DBImpl() {
   // Wait for background work to finish
   mutex_.Lock();
   shutting_down_.Release_Store(this);  // Any non-NULL value is ok
-  while (bg_compaction_scheduled_) {
+  while (bg_compaction_scheduled_ && hlsm::config::run_compaction) {
     bg_cv_.Wait();
   }
   mutex_.Unlock();

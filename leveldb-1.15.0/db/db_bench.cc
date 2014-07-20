@@ -971,7 +971,7 @@ class Benchmark {
         waited = 0;
       }
       
-      if (FLAGS_countdown > 0 && ((i+1) % 100 == 0 || ct_waited % 10 == 0) ) {
+      if (FLAGS_countdown > 0 && ((i+1) % 100 == 0) ) {
       	time(&now);
       	if (difftime(now, begin) > FLAGS_countdown)
       		break;
@@ -984,11 +984,8 @@ class Benchmark {
     thread->stats.AddMessage(msg);
 
     time(&now);
-    fprintf(stderr, "rwrandom completes %d read ops (out of %d) in %.3f seconds, %d found, wait %.4f sec (%d)\n", 
+    fprintf(stderr, "rwrandom completes %d read ops (out of %d) in %.3f seconds, %d found, wait %.4f sec (%d)\n",
       done, rwrandom_read_completed, difftime(now, begin), found, ct_waited/1000000, c_waited);
-    fprintf(stdout, "rwrandom completes %d read ops (out of %d) in %.3f seconds, %d found, wait %.4f sec (%d)\n", 
-      done, rwrandom_read_completed, difftime(now, begin), found, ct_waited/1000000, c_waited);
-
   }
 
   void RWRandom_Write(ThreadState* thread) {
@@ -1062,9 +1059,7 @@ class Benchmark {
     }
 
     time(&now);
-    fprintf(stderr, "rwrandom completes %d write ops in %.3f seconds, wait %.3f sec (%d)\n", 
-      done, difftime(now, begin), ct_waited/1000000, c_waited);
-    fprintf(stdout, "rwrandom completes %d write ops in %.3f seconds, wait %.3f sec (%d)\n", 
+    fprintf(stderr, "rwrandom completes %d write ops in %.3f seconds, wait %.3f sec (%d)\n",
       done, difftime(now, begin), ct_waited/1000000, c_waited);
 
   }
