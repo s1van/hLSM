@@ -12,7 +12,13 @@ BEGIN{ORS="\t"; start=-1; end=-1; minor_start=-1; minor_end=-1;
 	major_c=0; minor_c=0; major_mv_c=0; mv_c=0
 	major_byte=0; minor_byte=0; major_mv_byte=0; mv_byte=0;
 	major_fnum=0; gap=0;
-	work=0; minor_work=0; major_mv_work=0; }
+	work=0; minor_work=0; major_mv_work=0; 
+	max_fn = 64;
+	for (i = 0; i < max_fn; i++) {
+		fn_dist[i] = 0;
+	}
+}
+
 {
 	if (match("Compacting", $3)>0) {
 		start = getms($1); 
@@ -31,6 +37,11 @@ BEGIN{ORS="\t"; start=-1; end=-1; minor_start=-1; minor_end=-1;
 		ulevel_fnum = ret[0];
 		match($6,"[0-9]+", ret);
 		blevel_fnum = ret[0];
+
+		fn_dist[ulevel_fnum + blevel_fnum]++;
+		if (info == "fnum" && ulevel_fnum + blevel_fnum > 1 && ulevel_fnum + blevel_fnum < 25) {
+			printf("%d\n", ulevel_fnum + blevel_fnum)
+		}
 
 		if (blevel_fnum > 0) {
 			work = work + end - start;
@@ -58,19 +69,30 @@ BEGIN{ORS="\t"; start=-1; end=-1; minor_start=-1; minor_end=-1;
 		mv_byte = +$7;
 	}
 }
+
 END{work = work/1000; minor_work=minor_work/1000; major_mv_work=major_mv_work/1000; gap=gap/1000;
 	major_mb = major_byte/1048576; minor_mb=minor_byte/1048576; 
 	major_mv_mb=(mv_byte + major_mv_byte)/1048576;
-if(title) printf("%s\t%s\t%s\t%s\t%s\n",
-		"#major #minor #mv #file",
-		"major.s mionr.s mv.s",
-		"thoughput file.s.avg",
-		"gap major.t minor.t mv.t",
-		"major.t.avg major.s.avg");
-print major_c, minor_c, major_mv_c + mv_c, major_fnum, "\t",
-	major_mb, minor_mb, major_mv_mb, "\t",
-	(2*major_mb+2*minor_mb)/(work+minor_work), major_mb/major_fnum,"\t",
-	gap, work, minor_work, major_mv_work;
+	if (info == "basic") {
+		if(title) printf("%s\t%s\t%s\t%s\t%s\n",
+			"#major #minor #mv #file",
+			"major.s mionr.s mv.s",
+			"thoughput file.s.avg",
+			"gap major.t minor.t mv.t",
+			"major.t.avg major.s.avg");
+		print major_c, minor_c, major_mv_c + mv_c, major_fnum, "\t",
+			major_mb, minor_mb, major_mv_mb, "\t",
+			(2*major_mb+2*minor_mb)/(work+minor_work), major_mb/major_fnum,"\t",
+			gap, work, minor_work, major_mv_work;
+	
+		printf("\t%.3f %.3f\n", work/major_c, major_mb/major_c);
 
-printf("\t%.3f %.3f\n", work/major_c, major_mb/major_c) 
+	} else if (info == "fdist") { # get distribution of #file in per major compaction
+		for (i = 2; i < max_fn; i++) {
+			if (fn_dist[i] != 0) {
+				printf("%d\t%d\n",i, fn_dist[i]);
+			}
+		}
+	}
+
 }
