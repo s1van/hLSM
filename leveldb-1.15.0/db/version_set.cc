@@ -1065,8 +1065,11 @@ void VersionSet::Finalize(Version* v) {
       // setting, or very high compression ratios, or lots of
       // overwrites/deletions).
       score = hlsm::cursor::calculate_level0_compaction_score(v->files_[level].size(), v->files_[level+1].size());
+      if (hlsm::config::restrict_L0_score) {
+      	score = (score > 1) ? 1 : score;
+      }
       DEBUG_INFO((score>0 ? 1:100), "level %d, score = %.3f, #f = %lu, bytes = %lu\n", 
-	level, score, v->files_[level].size(), TotalFileSize(v->files_[level]));
+      		level, score, v->files_[level].size(), TotalFileSize(v->files_[level]));
     } else {
       // Compute the ratio of current size to size limit.
       if (hlsm::runtime::use_cursor_compaction) {
@@ -1075,9 +1078,9 @@ void VersionSet::Finalize(Version* v) {
     	  const uint64_t level_bytes = TotalFileSize(v->files_[level]);
     	  score = static_cast<double>(level_bytes) / MaxBytesForLevel(level);
 	  // do not compact the level that exceeds the kMaxLevel
-	  if (hlsm::config::kMaxLevel > 0 && level >= hlsm::config::kMaxLevel) score = 0; 
+    	  if (hlsm::config::kMaxLevel > 0 && level >= hlsm::config::kMaxLevel) score = 0;
     	  DEBUG_INFO((score>0 ? 1:100), "level %d, score = %.3f, bytes = %lu, max_bytes = %.3f, #f=%lu\n", 
-		level, score, level_bytes, MaxBytesForLevel(level), v->files_[level].size());
+    	  		level, score, level_bytes, MaxBytesForLevel(level), v->files_[level].size());
       }
     }
 

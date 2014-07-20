@@ -950,10 +950,11 @@ class Benchmark {
       rwrandom_read_completed++;
       rwrandom_read_mu_.Unlock();
 
-      if ((rwrandom_wspeed > 0 && rwrandom_wspeed * difftime(now, begin) > rwrandom_write_completed + RW_RELAX) ||
-        (rwrandom_wspeed == 0 &&
-        rwrandom_read_completed > (rwrandom_read_completed + rwrandom_write_completed) 
-          * (double)FLAGS_read_percent / 100  + RW_RELAX)) {
+      if ((rwrandom_wspeed > 0 &&
+      		rwrandom_wspeed * std::min(difftime(now, begin), FLAGS_countdown) > rwrandom_write_completed + RW_RELAX) ||
+      		(rwrandom_wspeed == 0 &&
+      				rwrandom_read_completed > (rwrandom_read_completed + rwrandom_write_completed)
+      				* (double)FLAGS_read_percent / 100  + RW_RELAX)) {
         DEBUG_INFO(3, "read pauses: read %d, write %d\n", 
           rwrandom_read_completed, rwrandom_write_completed);
         Env::Default()->SleepForMicroseconds(wait_us);
@@ -970,10 +971,10 @@ class Benchmark {
         waited = 0;
       }
       
-      if (FLAGS_countdown > 0 && (i+1) % 100 == 0) {
-	time(&now);
-	if (difftime(now, begin) > FLAGS_countdown)
-		break;
+      if (FLAGS_countdown > 0 && ((i+1) % 100 == 0 || ct_waited % 10 == 0) ) {
+      	time(&now);
+      	if (difftime(now, begin) > FLAGS_countdown)
+      		break;
       }
     }
 
@@ -1276,6 +1277,8 @@ int main(int argc, char** argv) {
       leveldb::config::kTargetFileSize = n * 1048576; // in MiB
     } else if (sscanf(argv[i], "--level0_size=%d%c", &n, &junk) == 1) {
       leveldb::config::kL0_Size = n;
+    } else if (sscanf(argv[i], "--restrict_level0_score=%d%c", &n, &junk) == 1) {
+      hlsm::config::restrict_L0_score = n;
     } else if (sscanf(argv[i], "--level_ratio=%d%c", &n, &junk) == 1) {
       leveldb::config::kLevelRatio = n;
     } else if (sscanf(argv[i], "--max_level=%d%c", &n, &junk) == 1) {
