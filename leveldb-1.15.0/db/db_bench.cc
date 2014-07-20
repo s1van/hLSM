@@ -961,7 +961,7 @@ class Benchmark {
         ct_waited =+ wait_us;
         c_waited ++;
         waited ++;
-        if (waited % 100 == 0) {
+        if (waited % 20 == 0) {
           DEBUG_INFO(3, "waited = %d, wait_us = %d\n", waited, wait_us);
           wait_us *= 2;
         }

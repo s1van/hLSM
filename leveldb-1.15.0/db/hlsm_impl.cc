@@ -332,6 +332,7 @@ int init(leveldb::Env* env_) {
 	if (hlsm::config::mode.isDefault()) {
 		leveldb::config::kMaxMemCompactLevel = 0;
 		use_cursor_compaction = false;
+		hlsm::config::secondary_storage_path = NULL;
 
 	} else if (hlsm::config::mode.isFullMirror()) {
 		full_mirror = true;
@@ -389,7 +390,7 @@ int init(leveldb::Env* env_) {
 	if (use_opq_thread)
 		hlsm::init_opq_helpler();
 
-	runtime::kMinBytesPerSeek = config::kMinKBPerSeek * 1024;
+	runtime::kMinBytesPerSeek = 1; //config::kMinKBPerSeek * 1024;
 
 	return 0;
 }

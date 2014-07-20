@@ -26,7 +26,7 @@ class BloomFilterPolicy : public FilterPolicy {
       : bits_per_key_(bits_per_key) {
   	k_ = static_cast<size_t>(bits_per_key * 0.69);
   	k_use_ = hlsm::get_bloom_filter_probe_num(bits_per_key);
-    DEBUG_INFO(1, "probe num = %lu\n", k_);
+    DEBUG_INFO(1, "probe num = %lu\n", k_use_);
     if (k_ < 1) k_ = 1;
     if (k_ > 30) k_ = 30;
   }

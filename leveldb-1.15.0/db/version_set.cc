@@ -547,6 +547,7 @@ void Version::GetOverlappingInputs(
     const InternalKey* end,
     std::vector<FileMetaData*>* inputs) {
   assert(level >= 0);
+  DEBUG_INFO(1, "level = %d, level_num_ = %d\n", level, level_num_);
   assert(level < level_num_);
   inputs->clear();
   Slice user_begin, user_end;
@@ -712,7 +713,7 @@ class BasicVersionSet::Builder {
       // same as the compaction of 40KB of data.  We are a little
       // conservative and allow approximately one seek for every 16KB
       // of data before triggering a compaction.
-      f->allowed_seeks = (f->file_size / 16384);
+      f->allowed_seeks = (f->file_size / hlsm::runtime::kMinBytesPerSeek);//(f->file_size / 16384);
       if (f->allowed_seeks < 100) f->allowed_seeks = 100;
 
       levels_[level].deleted_files.erase(f->number);
@@ -1064,7 +1065,8 @@ void VersionSet::Finalize(Version* v) {
       // setting, or very high compression ratios, or lots of
       // overwrites/deletions).
       score = hlsm::cursor::calculate_level0_compaction_score(v->files_[level].size(), v->files_[level+1].size());
-      DEBUG_INFO(1, "level %d, score = %.3f, #f = %lu\n", level, score, v->files_[level].size() );
+      DEBUG_INFO((score>0 ? 1:100), "level %d, score = %.3f, #f = %lu, bytes = %lu\n", 
+	level, score, v->files_[level].size(), TotalFileSize(v->files_[level]));
     } else {
       // Compute the ratio of current size to size limit.
       if (hlsm::runtime::use_cursor_compaction) {
@@ -1074,8 +1076,8 @@ void VersionSet::Finalize(Version* v) {
     	  score = static_cast<double>(level_bytes) / MaxBytesForLevel(level);
 	  // do not compact the level that exceeds the kMaxLevel
 	  if (hlsm::config::kMaxLevel > 0 && level >= hlsm::config::kMaxLevel) score = 0; 
-    	  DEBUG_INFO(1, "level %d, score = %.3f, bytes = %lu, max_bytes = %.3f\n", 
-		level, score, level_bytes, MaxBytesForLevel(level));
+    	  DEBUG_INFO((score>0 ? 1:100), "level %d, score = %.3f, bytes = %lu, max_bytes = %.3f, #f=%lu\n", 
+		level, score, level_bytes, MaxBytesForLevel(level), v->files_[level].size());
       }
     }
 

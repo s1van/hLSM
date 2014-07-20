@@ -159,8 +159,7 @@ class LazyVersionSet::Builder {
       FileMetaData* f = new FileMetaData(edit->new_files_lazy_[i].second);
       f->refs = 1;
 
-      f->allowed_seeks = (f->file_size / hlsm::runtime::kMinBytesPerSeek);
-      if (f->allowed_seeks < 100) f->allowed_seeks = 100;
+      f->allowed_seeks = 1000000;
 
       lazy_levels_[level].deleted_files.erase(f->number);
       lazy_levels_[level].added_files->insert(f);
@@ -758,6 +757,7 @@ Compaction* LazyVersionSet::PickCompaction() {
     }
   } else if (seek_compaction) {
     level = current_->file_to_compact_level_;
+    assert(level+1 < config::kNumLevels);
     // X.L -> X.R can only happen through MoveLevelDown or MoveFileDown
     //   so Lazy Version won't have overlapped files on level other than 0
     if (level % 2 == 0) return NULL;
@@ -781,9 +781,9 @@ Compaction* LazyVersionSet::PickCompaction() {
 	assert(!c->inputs_[0].empty());
   }
 
-  SetupOtherInputs(c);
-  DEBUG_INFO(2, "level = %d, seek_c: %d, size_c:%d\n", 
+  DEBUG_INFO(1, "level = %d, seek_c: %d, size_c:%d\n", 
 	level, seek_compaction, size_compaction);
+  SetupOtherInputs(c);
 
   return c;
 }

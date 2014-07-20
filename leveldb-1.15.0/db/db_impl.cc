@@ -755,7 +755,7 @@ void DBImpl::BackgroundCompaction() {
 		versions_->LevelSummary(&tmp));
 
   } else {
-	DEBUG_INFO(1, "DoCompactionWork\n");
+    DEBUG_INFO(1, "DoCompactionWork\n");
     CompactionState* compact = new CompactionState(c);
     DEBUG_MEASURE_RECORD(1, (status = DoCompactionWork(compact)), "DoCompactionWork");
     if (!status.ok()) {
