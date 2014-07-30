@@ -1,0 +1,109 @@
+#!/bin/bash
+
+ANALYZER=`dirname $0`/io-analysis.sh;
+EXEC=`dirname $0`/../leveldb-1.15.0/db_bench;
+
+CONF=$1;
+TDIR=$2;
+TAIL_PARAMS="${*:3}";
+
+MLOG=$TDIR/mlog;
+
+MODE=Default;
+FILE_SIZE=8;	# in MiB
+VALUE_SIZE=1024; # default 100
+BUFFER_SIZE=8; #4*5.5 = 22  #8388608; #16777216; 
+THREADS=5;
+LEVEL0_SIZE=90;
+OPEN_FILES=16000;
+
+DEBUG_LEVEL=1;
+READ_FROM=0;
+WRITE_FROM=0;
+READ_UPTO=20000000;
+WRITE_UPTO=20000000;
+
+LEVEL_RATIO=4;
+USE_DB=0;
+RRATIO=0;
+STORE=/tmp;
+SEC_STORAGE=/tmp;
+NUM=20000000;
+COUNTDOWN=-1;
+BLOOM_BITS=10;
+BLOOM_BITS_USE=10;
+CACHE_SIZE=256; # guaranteed to fit one compaction in, and do not consume too much memory
+
+RAW_PREFETCH=0;
+ITERATOR_PREFETCH=1;
+PRELOAD_META=1;
+RUN_COMPACTION=1;
+MAX_LEVEL=-1;
+
+prep_rwrandom() {
+	ARGS="--db=$STORE --benchmarks=rwrandom --num=$NUM --use_existing_db=$USE_DB --value_size=$VALUE_SIZE --read_percent=$RRATIO --threads=$THREADS --read_key_from=$READ_FROM --read_key_upto=$READ_UPTO --write_key_from=$WRITE_FROM --write_key_upto=$WRITE_UPTO --write_buffer_size=$BUFFER_SIZE --open_files=$OPEN_FILES --bloom_bits=$BLOOM_BITS --hlsm_mode=$MODE --hlsm_secondary_storage_path=$SEC_STORAGE --level_ratio=$LEVEL_RATIO --file_size=$FILE_SIZE --histogram=1 --countdown=$COUNTDOWN --compression_ratio=1 --debug_level=$DEBUG_LEVEL --monitor_log=$MLOG --bloom_bits_use=$BLOOM_BITS_USE --level0_size=$LEVEL0_SIZE --preload_metadata=$PRELOAD_META --debug_file=/tmp/hlsm_log --max_level=$MAX_LEVEL --run_compaction=$RUN_COMPACTION --iterator_prefetch=$ITERATOR_PREFETCH --cache_size=$(($CACHE_SIZE * 1024 * 1024)) --raw_prefetch=$RAW_PREFETCH";
+	echo "$EXEC $ARGS";
+}
+
+
+Default() {
+	MODE=Default;
+	
+	prep_rwrandom;
+	$EXEC $ARGS &
+}
+
+FullMirror() {
+	MODE=FullMirror;
+	
+	prep_rwrandom;
+	$EXEC $ARGS &
+}
+
+bLSM() {
+	MODE=bLSM;
+	
+	prep_rwrandom;
+	$EXEC $ARGS &
+}
+
+hLSM() {
+	MODE=hLSM;
+	
+	prep_rwrandom;
+	$EXEC $ARGS &
+}
+
+
+multi-instance() {
+	INSTANCE_NUM=$1;
+	echo "Num=$INSTANCE_NUM	Benchmark=$BENCHMARK"
+
+	STORE_ROOT=$STORE;
+	SEC_ROOT=$SEC_STORAGE;
+
+	for i in `seq 1 $INSTANCE_NUM`; do
+		if [ "$BUFFER_SIZES" != "" ]; then
+			BUFFER_SIZE="$(echo $BUFFER_SIZES| awk -v ss=$i '{print $ss}')";
+			echo $BUFFER_SIZE
+		fi
+			echo $BUFFER_SIZE
+
+		SEC_STORAGE=$SEC_ROOT/${i};
+		STORE=$STORE_ROOT/${i};
+		echo $SEC_STORAGE $STORE;
+		mkdir -p $SEC_STORAGE $STORE;
+
+		$BENCHMARK;
+		sleep 1;
+	done
+}
+
+# entry
+source $CONF; #test, arguments
+cat $CONF;
+$TEST $TAIL_PARAMS;
+
+# sync
+wait;
+
