@@ -6,6 +6,7 @@
 #define STORAGE_LEVELDB_UTIL_RANDOM_H_
 
 #include <stdint.h>
+#include "port/port_posix.h"
 
 namespace leveldb {
 
@@ -15,6 +16,7 @@ namespace leveldb {
 class Random {
  private:
   uint32_t seed_;
+  port::Mutex mu_;
  public:
   explicit Random(uint32_t s) : seed_(s & 0x7fffffffu) { }
   uint32_t Next() {
@@ -26,6 +28,7 @@ class Random {
     // seed_ must not be zero or M, or else all subsequent computed values
     // will be zero or M respectively.  For all other values, seed_ will end
     // up cycling through every number in [1,M-1]
+    mu_.Lock();
     uint64_t product = seed_ * A;
 
     // Compute (product % M) using the fact that ((x << 31) % M) == x.
@@ -36,9 +39,18 @@ class Random {
     if (seed_ > M) {
       seed_ -= M;
     }
+    mu_.Unlock();
     return seed_;
   }
   
+  uint32_t Next(int skip) {
+  	uint32_t ret = Next();
+  	for (int i = 1; i < skip; i++) {
+  		ret = Next();
+  	}
+  	return ret;
+  }
+
   uint64_t Next64() {
 	uint64_t upper = static_cast<uint64_t> (Next());
 	uint64_t lower = static_cast<uint64_t> (Next());

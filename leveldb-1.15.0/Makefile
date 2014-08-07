@@ -54,7 +54,7 @@ TESTS = \
 	write_batch_test \
 	hlsm_test
 
-PROGRAMS = db_bench leveldbutil $(TESTS)
+PROGRAMS = db_bench leveldbutil db_gen $(TESTS)
 BENCHMARKS = db_bench_sqlite3 db_bench_tree_db
 
 LIBRARY = libleveldb.a
@@ -104,6 +104,9 @@ $(LIBRARY): $(LIBOBJECTS)
 
 db_bench: db/db_bench.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) $(LDFLAGS) db/db_bench.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LIBS)
+	
+db_gen: db/db_gen.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) $(LDFLAGS) db/db_gen.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LIBS)
 
 db_bench_sqlite3: doc/bench/db_bench_sqlite3.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) $(LDFLAGS) doc/bench/db_bench_sqlite3.o $(LIBOBJECTS) $(TESTUTIL) -o $@ -lsqlite3 $(LIBS)

@@ -124,6 +124,8 @@ static double FLAGS_countdown = -1;
 
 static double rwrandom_wspeed = 0;
 
+static int FLAGS_random_seed = 301;
+
 static volatile int rwrandom_read_completed = 0;
 static volatile int rwrandom_write_completed = 0;
 static int RW_RELAX=1024;
@@ -390,13 +392,13 @@ struct SharedState {
 // Per-thread state for concurrent executions of the same benchmark.
 struct ThreadState {
   int tid;             // 0..n-1 when running in n threads
-  Random rand;         // Has different seeds for different threads
+  Random *rand;         // Threads share the same seed
   Stats stats;
   SharedState* shared;
 
-  ThreadState(int index)
+  ThreadState(int index, Random *r)
       : tid(index),
-        rand( ((int) Env::Default()->NowMicros()/1000000 )+ index) {
+        rand(r) {
 			stats.tid_ = index;
 			stats.pid_ = getpid();
   }
@@ -674,6 +676,7 @@ class Benchmark {
 
   void RunBenchmark(int n, Slice name,
                     void (Benchmark::*method)(ThreadState*)) {
+  	Random rand_(FLAGS_random_seed);
     SharedState shared;
     shared.total = n;
     shared.num_initialized = 0;
@@ -690,7 +693,7 @@ class Benchmark {
       arg[i].bm = this;
       arg[i].method = method;
       arg[i].shared = &shared;
-      arg[i].thread = new ThreadState(i);
+      arg[i].thread = new ThreadState(i, &rand_);
       arg[i].thread->shared = &shared;
       Env::Default()->StartThread(ThreadBody, &arg[i]);
       if (method == &Benchmark::RWRandom_Write) // multiple read threads, one write thread
@@ -840,7 +843,7 @@ class Benchmark {
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
+        const int k = seq ? i+j : (thread->rand->Next() % FLAGS_num);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
         batch.Put(key, gen.Generate(value_size_));
@@ -888,7 +891,7 @@ class Benchmark {
     int found = 0;
     for (int i = 0; i < reads_; i++) {
       char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
+      const int k = thread->rand->Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d", k);
       if (db_->Get(options, key, &value).ok()) {
         found++;
@@ -931,7 +934,7 @@ class Benchmark {
     for (i = 0; done < rnum; i++) {
       char key[100];
       time(&now);
-      const int64_t k = thread->rand.Next64() % FLAGS_read_span;
+      const int64_t k = thread->rand->Next64() % FLAGS_read_span;
       snprintf(key, sizeof(key), "%020ld", k);
       DEBUG_MEASURE_RECORD(2, (s = db_->Get(options, key, &value)), "RW--Get" );
       isFound = s.ok();
@@ -1021,8 +1024,7 @@ class Benchmark {
         (rwrandom_wspeed == 0 &&
           rwrandom_write_completed < 
             (rwrandom_read_completed + rwrandom_write_completed) * ((double)(100 - FLAGS_read_percent) / 100)  + RW_RELAX) ) {
-        const uint64_t k = FLAGS_write_from + (thread->rand.Next64() % FLAGS_write_span);
-        char key[100];
+        const uint64_t k = FLAGS_write_from + (thread->rand->Next64() % FLAGS_write_span);
         snprintf(key, sizeof(key), "%020ld", k);
         batch.Put(key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);
@@ -1069,7 +1071,7 @@ class Benchmark {
     std::string value;
     for (int i = 0; i < reads_; i++) {
       char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
+      const int k = thread->rand->Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d.", k);
       db_->Get(options, key, &value);
       thread->stats.FinishedSingleOp();
@@ -1082,7 +1084,7 @@ class Benchmark {
     const int range = (FLAGS_num + 99) / 100;
     for (int i = 0; i < reads_; i++) {
       char key[100];
-      const int k = thread->rand.Next() % range;
+      const int k = thread->rand->Next() % range;
       snprintf(key, sizeof(key), "%016d", k);
       db_->Get(options, key, &value);
       thread->stats.FinishedSingleOp();
@@ -1096,7 +1098,7 @@ class Benchmark {
     for (int i = 0; i < reads_; i++) {
       Iterator* iter = db_->NewIterator(options);
       char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
+      const int k = thread->rand->Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d", k);
       iter->Seek(key);
       if (iter->Valid() && iter->key() == key) found++;
@@ -1115,7 +1117,7 @@ class Benchmark {
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
+        const int k = seq ? i+j : (thread->rand->Next() % FLAGS_num);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
         batch.Delete(key);
@@ -1152,7 +1154,7 @@ class Benchmark {
           }
         }
 
-        const int k = thread->rand.Next() % FLAGS_num;
+        const int k = thread->rand->Next() % FLAGS_num;
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
         Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
@@ -1225,11 +1227,11 @@ int main(int argc, char** argv) {
       FLAGS_use_existing_db = n;
     } else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
       FLAGS_num = n;
-      if (FLAGS_read_span == -1) {
+      if (FLAGS_read_upto == -1) {
         FLAGS_read_upto = FLAGS_num;
         FLAGS_read_span = FLAGS_num;
       }
-      if (FLAGS_write_span == -1) {
+      if (FLAGS_write_upto == -1) {
         FLAGS_write_upto = FLAGS_num;
         FLAGS_write_span = FLAGS_num;
       }
@@ -1280,6 +1282,8 @@ int main(int argc, char** argv) {
       hlsm::config::kMaxLevel = n;
     } else if (sscanf(argv[i], "--countdown=%lf%c", &d, &junk) == 1) {
       FLAGS_countdown = d;
+    } else if (sscanf(argv[i], "--random_seed=%lf%c", &d, &junk) == 1) {
+      FLAGS_random_seed = d;
     } else if (sscanf(argv[i], "--debug_level=%d%c", &n, &junk) == 1) {
       hlsm::config::debug_level = n;
     } else if (sscanf(argv[i], "--preload_metadata=%d%c", &n, &junk) == 1) {

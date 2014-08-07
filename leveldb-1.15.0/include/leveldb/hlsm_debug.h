@@ -106,7 +106,7 @@ extern leveldb::port::Mutex debug_mutex_;
 #define _DEBUG_LEVEL_CHECK_NOLOCK_NOSKIP(_level, _do_if_true, _do_if_false) do {        \
 		if (_level <= hlsm::config::debug_level) {  \
 			_do_if_true;	\
-		} else {      		\
+		} else {      	\
 			_do_if_false;	\
 		}	\
 	} while(0)
