@@ -10,6 +10,8 @@
 #include "table/filter_block.h"
 #include "table/format.h"
 
+#include "db/memtable.h"
+#include "db/builder.h"
 #include "db/version_set.h"
 #include "db/lazy_version_set.h"
 #include "db/version_edit.h"
@@ -307,6 +309,108 @@ void DBImpl::HLSMDeleteObsoleteFiles() {
       }
     }
   }
+}
+
+Status DBImpl::WriteLevel0TableToLevel(MemTable* mem, VersionEdit* edit,
+                                Version* base, int level) {
+  mutex_.AssertHeld();
+  const uint64_t start_micros = env_->NowMicros();
+  FileMetaData meta;
+  meta.number = versions_->NewFileNumber();
+  pending_outputs_.insert(meta.number);
+  Iterator* iter = mem->NewIterator();
+  Log(options_.info_log, "Level-0 table #%llu: started",
+      (unsigned long long) meta.number);
+  DEBUG_INFO(3, "Write to level %d [start]\n", level);
+
+  Status s;
+  {
+    mutex_.Unlock();
+    s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+    mutex_.Lock();
+  }
+
+  DEBUG_INFO(3, "Write to level %d [table built]\n", level);
+
+  Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
+      (unsigned long long) meta.number,
+      (unsigned long long) meta.file_size,
+      s.ToString().c_str());
+  delete iter;
+  pending_outputs_.erase(meta.number);
+
+
+  // Note that if file_size is zero, the file has been deleted and
+  // should not be added to the manifest.
+  if (s.ok() && meta.file_size > 0) {
+    const Slice min_user_key = meta.smallest.user_key();
+    const Slice max_user_key = meta.largest.user_key();
+    edit->AddFile(level, meta.number, meta.file_size,
+                  meta.smallest, meta.largest);
+    //CALL_IF_HLSM(assert(level == 0));
+    //CALL_IF_HLSM(reinterpret_cast<LazyVersionEdit*>(edit)
+    //		->AddLazyFile(level, meta.number, meta.file_size, meta.smallest, meta.largest));
+  }
+
+  CompactionStats stats;
+  stats.micros = env_->NowMicros() - start_micros;
+  stats.bytes_written = meta.file_size;
+  stats_[level].Add(stats);
+  return s;
+}
+
+int DBImpl::MaybeCompactMemTableToLevel(int level) {
+	if (imm_ == NULL)
+	  	return 0;
+	mutex_.AssertHeld();
+	mutex_.Lock();
+
+  // Save the contents of the memtable as a new Table
+  VersionEdit &edit = (*NewVersionEdit(versions_));
+  Version* base = versions_->current();
+  base->Ref();
+  Version* current_lazy = NULL;
+  CALL_IF_HLSM(current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy());
+
+  CALL_IF_HLSM(current_lazy->Ref());
+  Status s = WriteLevel0TableToLevel(imm_, &edit, base, level);
+  base->Unref();
+  CALL_IF_HLSM(current_lazy->Unref());
+
+  DEBUG_INFO(1, "To level %d\n", level);
+
+  if (s.ok() && shutting_down_.Acquire_Load()) {
+    s = Status::IOError("Deleting DB during memtable compaction");
+  }
+
+  // Replace immutable memtable with the generated Table
+  if (s.ok()) {
+    edit.SetPrevLogNumber(0);
+    edit.SetLogNumber(logfile_number_);  // Earlier logs no longer needed
+
+    s = versions_->LogAndApply(&edit, &mutex_);
+  }
+
+  delete &edit;
+  if (s.ok()) {
+    // Commit to the new state
+    imm_->Unref();
+    imm_ = NULL;
+    has_imm_.Release_Store(NULL);
+    DeleteObsoleteFiles();
+
+    // delete leftover kv-pairs to avoid key range overlapping
+    mem_->Unref();
+    mem_ = new MemTable(internal_comparator_);
+    mem_->Ref();
+    mutex_.Unlock();
+    return 1;
+  } else {
+    RecordBackgroundError(s);
+  }
+
+  mutex_.Unlock();
+  return 0;
 }
 
 } // namespace leveldb

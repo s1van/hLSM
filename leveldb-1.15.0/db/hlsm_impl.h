@@ -99,6 +99,12 @@ inline int maybe_delete_secondary_table(leveldb::Env* const env, uint64_t num) {
 	return 0;
 }
 
+inline int max_fnum_in_level(int level) {
+	double maxbytes = (hlsm::runtime::use_cursor_compaction) ?
+			hlsm::MaxBytesForLevel(level) : hlsm::DefaultMaxBytesForLevel(level);
+	return (int) (maxbytes/leveldb::config::kTargetFileSize);
+}
+
 } // namespace hlsm
 
 

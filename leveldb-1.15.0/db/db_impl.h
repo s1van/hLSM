@@ -64,6 +64,9 @@ class DBImpl : public DB {
   // bytes.
   void RecordReadSample(Slice key);
 
+  // for db_gen
+  int MaybeCompactMemTableToLevel(int level);
+
  private:
   friend class DB;
   struct CompactionState;
@@ -99,6 +102,10 @@ class DBImpl : public DB {
 
   Status WriteLevel0Table(MemTable* mem, VersionEdit* edit, Version* base)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
+  // for db_gen
+  Status WriteLevel0TableToLevel(MemTable* mem, VersionEdit* edit,
+                                  Version* base, int level);
 
   Status MakeRoomForWrite(bool force /* compact even if there is room? */)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);

@@ -104,6 +104,17 @@ inline double MaxBytesForLevel(int level) {
   return result;
 }
 
+inline double DefaultMaxBytesForLevel(int level) {
+  // Note: the result for level zero is not really used since we set
+  // the level-0 compaction threshold based on number of files.
+  double result = leveldb::config::kL0_Size * 1048576.0;  // Result for both level-0 and level-1
+  while (level > 1) {
+    result *= leveldb::config::kLevelRatio;
+    level--;
+  }
+  return result;
+}
+
 /*
  * hLSM Level conversion
  * on_primary		on_secondary	logically	physical_pri	physical_sec

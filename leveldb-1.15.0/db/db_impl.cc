@@ -1369,6 +1369,8 @@ Status DBImpl::MakeRoomForWrite(bool force) {
   assert(!writers_.empty());
   bool allow_delay = !force;
   Status s;
+  DEBUG_INFO(3, "Mem Usage: %lu\tBuffer Size: %lu\timm: %p\n",
+  		mem_->ApproximateMemoryUsage(), options_.write_buffer_size, imm_);
   while (true) {
     if (!bg_error_.ok()) {
       // Yield previous error
