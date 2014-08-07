@@ -25,11 +25,11 @@ public:
 	Status MoveFileDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
 
 	Compaction* PickCompaction();
-	void PrintVersionSet();
 
 	hlsm::delta_meta_t* GetDeltaLevelOffsets() { return delta_meta_;  }
 	Version* current_lazy() const { return current_lazy_; }
 	bool isLazyLevelNonEmpty(int level) {return current_lazy_->NumFiles(level) > 0;}
+	void PrintVersionSet();
 
 private:
  friend class Compaction;

@@ -282,6 +282,7 @@ class VersionSet {
 
   virtual Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_) = 0;
   virtual Status MoveFileDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_) = 0;
+  virtual void PrintVersionSet() = 0;
 
 protected:
   class Builder;
@@ -345,6 +346,7 @@ class BasicVersionSet: public VersionSet {
   Status Recover();
   Status MoveLevelDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
   Status MoveFileDown(leveldb::Compaction* c, leveldb::port::Mutex *mutex_);
+  void PrintVersionSet();
 
  private:
   friend class Compaction;

@@ -816,6 +816,7 @@ BasicVersionSet::BasicVersionSet(const std::string& dbname,
 }
 
 BasicVersionSet::~BasicVersionSet() {
+	DEBUG_LEVEL_CHECK_NOLOCK(1, PrintVersionSet());
   current_->Unref();
   assert(dummy_versions_.next_ == &dummy_versions_);  // List must be empty
   delete descriptor_log_;
@@ -921,6 +922,7 @@ Status BasicVersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
     }
   }
 
+  DEBUG_LEVEL_CHECK_NOLOCK(1, PrintVersionSet());
   return s;
 }
 
@@ -1443,6 +1445,30 @@ Compaction* VersionSet::CompactRange(
   c->inputs_[0] = inputs;
   SetupOtherInputs(c);
   return c;
+}
+
+void BasicVersionSet::PrintVersionSet() {
+	DEBUG_BULK_START;
+	DEBUG_PRINT_NOLOCK(0, "Print Regular Version: [vset: %p, current: %p]\n",
+			current_->vset_, current_);
+	for (Version* v = dummy_versions_.next_;
+			v != &dummy_versions_;
+			v = v->next_) {
+		DEBUG_PRINT_NOLOCK(0, "v = %p, refs = %d\n", v, v->GetRef());
+		for (int level = 0; level < config::kNumLevels; level++) {
+			const std::vector<FileMetaData*>& files = v->files_[level];
+			if (files.size() > 0) {
+				DEBUG_PRINT_NOLOCK(0, "[level %d, %lu]\t", level, files.size());
+				for (size_t i = 0; i < files.size(); i++) {
+					DEBUG_PRINT_NOLOCK(0, "%lu\t", files[i]->number);
+				}
+				DEBUG_PRINT_NOLOCK(0, "\n");
+			}
+		}
+		DEBUG_PRINT_NOLOCK(0, "\n");
+	}
+
+	DEBUG_BULK_END;
 }
 
 Compaction::Compaction(int level)
