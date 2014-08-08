@@ -32,6 +32,10 @@ class LazyVersionEdit: public leveldb::VersionEdit {
     DEBUG_INFO(3,"size: %lu fnum: %lu\tlevel: %d\tfp: %p\n", file_size, file, level, &f);
   }
 
+  void AddLazyFileByRawLevel(int raw_level, uint64_t file,
+               uint64_t file_size, const InternalKey& smallest,
+               const InternalKey& largest, Version *lv);
+
   // Delete the specified "file" from the specified "level".
   void DeleteLazyFile(int level, uint64_t file) {
 	deleted_files_lazy_.insert(std::make_pair(level, file));

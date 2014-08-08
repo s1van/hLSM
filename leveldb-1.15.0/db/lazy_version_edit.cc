@@ -6,6 +6,7 @@
 #include "db/lazy_version_edit.h"
 #include "db/version_set.h"
 #include "db/lazy_version_set.h"
+#include "db/hlsm_impl.h"
 #include "util/coding.h"
 #include "leveldb/hlsm_func.h"
 
@@ -415,7 +416,7 @@ int LazyVersionEdit::UpdateLazyLevels(int level, VersionSet* v, Compaction* cons
 			  deleted_files_lazy_.insert(std::make_pair(
 					  hlsm::get_pure_mirror_level(level+1), c->input(1, i)->number));
 		  }
-		  // add outputs to next level
+		  // add output files to (X+1).R
 		  for (size_t i = 0; i < outputs.size(); i++) {
 			  const Output& out = outputs[i];
 			  AddLazyFile(hlsm::get_pure_mirror_level(level+1), out.number,
@@ -445,5 +446,43 @@ int LazyVersionEdit::UpdateLazyLevels(int level, VersionSet* v, Compaction* cons
 
 	  return 0;
  }
+
+void LazyVersionEdit::AddLazyFileByRawLevel(int raw_level, uint64_t file,
+		uint64_t file_size,
+		const InternalKey& smallest,
+		const InternalKey& largest,
+		Version *lv) {
+
+	int llevel = hlsm::get_logical_level(raw_level);
+
+	// must be L0.L, purely mirrored
+	if (llevel == 0) {
+		AddLazyFile(raw_level, file, file_size, smallest, largest);
+
+	// within the range of two-phase compaction, copy files in X.R to X.delta?, X.L to X.NEW
+	} else if (llevel > 0 && llevel <= hlsm::runtime::two_phase_end_level){
+		// X.L
+		if (raw_level %2 == 1) {
+			AddLazyFile(hlsm::get_hlsm_new_level(raw_level),
+					file, file_size, smallest, largest);
+
+		// X.R
+		} else {
+			int dlevel = hlsm::get_active_delta_level(delta_meta_, llevel);
+			AddLazyFile(dlevel, file, file_size, smallest, largest);
+
+			// check if current delta level is full (its size equals the size of the new level above)
+			//	raw_level >= 2 due to llevel > 0
+			if (hlsm::max_fnum_in_level(raw_level - 2) - 1 <= lv->NumFiles(dlevel) ) {
+				AdvanceActiveDeltaLevel(llevel);
+			}
+		}
+
+  // levels that are out of the control of the two-phase compaction
+	} else if (llevel > hlsm::runtime::two_phase_end_level ) {
+		AddLazyFile(hlsm::get_pure_mirror_level(raw_level),
+				file, file_size, smallest, largest);
+	}
+}
 
 }  // namespace leveldb

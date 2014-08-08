@@ -347,9 +347,9 @@ Status DBImpl::WriteLevel0TableToLevel(MemTable* mem, VersionEdit* edit,
     const Slice max_user_key = meta.largest.user_key();
     edit->AddFile(level, meta.number, meta.file_size,
                   meta.smallest, meta.largest);
-    //CALL_IF_HLSM(assert(level == 0));
-    //CALL_IF_HLSM(reinterpret_cast<LazyVersionEdit*>(edit)
-    //		->AddLazyFile(level, meta.number, meta.file_size, meta.smallest, meta.largest));
+    CALL_IF_HLSM(reinterpret_cast<LazyVersionEdit*>(edit)
+    	->AddLazyFileByRawLevel(level, meta.number, meta.file_size, meta.smallest, meta.largest,
+    			reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy() ));
   }
 
   CompactionStats stats;
@@ -448,6 +448,10 @@ int init(leveldb::Env* env_) {
 		use_opq_thread = true;
 		leveldb::config::kMaxMemCompactLevel = 0;
 		hlsm::config::append_by_opq = false;
+		if (hlsm::config::secondary_storage_path == NULL) {
+			fprintf(stderr, "secondary_storage_path is NULL\n");
+			exit(0);
+		}
 
 	} else if (hlsm::config::mode.isPartialMirror()) {
 		full_mirror = false;
@@ -457,6 +461,10 @@ int init(leveldb::Env* env_) {
 		meta_on_primary = false;
 		log_on_primary = false;
 		use_opq_thread = true;
+		if (hlsm::config::secondary_storage_path == NULL) {
+			fprintf(stderr, "secondary_storage_path is NULL\n");
+			exit(0);
+		}
 
 	} else if (hlsm::config::mode.isbLSM()) {
 		full_mirror = false;
@@ -489,6 +497,10 @@ int init(leveldb::Env* env_) {
 		two_phase_end_level = 4; // cursor (logical) level; level starts at 0
 		mirror_start_level = two_phase_end_level * 2; // physical level on primary storage
 		leveldb::config::kMaxMemCompactLevel = 0; // do not write memtable to levels other than 0
+		if (hlsm::config::secondary_storage_path == NULL) {
+			fprintf(stderr, "secondary_storage_path is NULL\n");
+			exit(0);
+		}
 	}
 
 	if (use_opq_thread)
