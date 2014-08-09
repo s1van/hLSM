@@ -133,8 +133,8 @@ plot_TL = function(file, leg, xlab) {
 
 	#tp_pos <- seq(2,n,2)
 	#lc_pos <- seq(1,n,2)
-	lc_pos <- 1:n/2
-	tp_pos <- (n/2+1) :n
+	lc_pos <- 1:(n/2)
+	tp_pos <- ((n/2)+1) :n
 	draw_time_series(t, ys[tp_pos], "Throughput (ops/sec)")
 	draw_time_series(t, ys[lc_pos], "Latency (ms)", xlabel = xlab)
 
