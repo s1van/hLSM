@@ -86,7 +86,7 @@ extern int kMinBytesPerSeek;
  */
 static const int delta_level_num = 16; // choose a large level_num to handle overflow
 static const int kLogicalLevels = leveldb::config::kNumLevels / 2;
-static const int kNumLazyLevels = 2 + (delta_level_num + 1) * (kLogicalLevels - 3) + delta_level_num + 2;
+static const int kNumLazyLevels = 2 + (delta_level_num + 1) * (kLogicalLevels - 2) + delta_level_num + 2 + 4; // +4 for safety
 extern int two_phase_end_level;
 
 extern TableLevel table_level;
