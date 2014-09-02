@@ -23,6 +23,9 @@ Some important arguments are listed below.
 ### --preload_metadata
 Preload all tables's metadata when set to 1.
 
+## debug
+To enable debug mode, comment out '-DNDEBUG' at the beginning of leveldb-1.5.0/Makefile.
+
 ## db_gen
 Create by 'make db_gen'.
 
