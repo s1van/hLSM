@@ -494,7 +494,7 @@ int init(leveldb::Env* env_) {
 		meta_on_primary = false;
 		log_on_primary = false;
 		use_opq_thread = true;
-		two_phase_end_level = 5; // cursor (logical) level; level starts at 0
+		two_phase_end_level = 6; // cursor (logical) level; level starts at 0
 		mirror_start_level = two_phase_end_level * 2; // physical level on primary storage
 		leveldb::config::kMaxMemCompactLevel = 0; // do not write memtable to levels other than 0
 		if (hlsm::config::secondary_storage_path == NULL) {
