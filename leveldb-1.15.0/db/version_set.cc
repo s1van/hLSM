@@ -1136,7 +1136,7 @@ int VersionSet::NumLevelFiles(int level) const {
 
 const char* VersionSet::LevelSummary(LevelSummaryStorage* scratch) const {
   // Update code if kNumLevels changes
-  assert(config::kNumLevels == 12);
+  assert(config::kNumLevels > 8);
   snprintf(scratch->buffer, sizeof(scratch->buffer),
            "files[ %d %d %d %d %d %d %d %d ]",
            int(current_->files_[0].size()),
