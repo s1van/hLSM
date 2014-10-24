@@ -70,6 +70,12 @@ class LazyVersionEdit: public leveldb::VersionEdit {
 		  delta_meta_[llevel].active = 1;
   }
 
+  int AdvanceActiveDeltaLevelByRawLevel(int raw_level) {
+  	int llevel = hlsm::get_logical_level(raw_level);
+  	AdvanceActiveDeltaLevel(llevel);
+  	return 1;
+  }
+
   inline void RollForwardDeltaLevels(int llevel) {
   	  delta_meta_[llevel].start = delta_meta_[llevel].clear;
   	  delta_meta_[llevel].clear = delta_meta_[llevel].active;

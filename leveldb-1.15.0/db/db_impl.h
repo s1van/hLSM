@@ -66,6 +66,7 @@ class DBImpl : public DB {
 
   // for db_gen
   int MaybeCompactMemTableToLevel(int level);
+  int AdvanceHLSMActiveDeltaLevel(int level);
 
  private:
   friend class DB;

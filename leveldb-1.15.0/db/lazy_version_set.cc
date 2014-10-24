@@ -173,7 +173,7 @@ class LazyVersionSet::Builder {
       std::vector<FileMetaData*>* files = &v->files_[level];
       if (level > 0 && !files->empty()) {
         // Must not overlap
-	DEBUG_INFO(3, "Versions: %p, level: %d, file: %lu\n", v, level, f->number);
+      	DEBUG_INFO(3, "Versions: %p, level: %d, file: %lu\n", v, level, f->number);
         assert(vset_->icmp_.Compare((*files)[files->size()-1]->largest,
                                     f->smallest) < 0);
       }

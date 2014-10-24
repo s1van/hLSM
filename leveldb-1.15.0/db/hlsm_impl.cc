@@ -158,7 +158,7 @@ RandomAccessFile* Table::PickFileHandler(Table::Rep* rep, bool is_sequential) {
 						pname.c_str(), s.ToString().c_str());
 					rep->primary_ = NULL;
 				} else {
-					DEBUG_INFO(2, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
+					// DEBUG_INFO(2, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
 				}
 
 			}
@@ -409,6 +409,41 @@ int DBImpl::MaybeCompactMemTableToLevel(int level) {
     RecordBackgroundError(s);
   }
 
+  mutex_.Unlock();
+  return 0;
+}
+
+int DBImpl::AdvanceHLSMActiveDeltaLevel(int level) {
+	if(!hlsm::config::mode.ishLSM())
+			return 0;
+
+	mutex_.AssertHeld();
+	mutex_.Lock();
+
+  VersionEdit* edit = NewVersionEdit(versions_);
+  Version* base = versions_->current();
+  base->Ref();
+  Version* current_lazy = NULL;
+  current_lazy = reinterpret_cast<LazyVersionSet*>(versions_)->current_lazy();
+
+  current_lazy->Ref();
+
+  int ok = reinterpret_cast<LazyVersionEdit*>(edit)->AdvanceActiveDeltaLevelByRawLevel(level);
+  base->Unref();
+  current_lazy->Unref();
+
+  DEBUG_INFO(1, "Advance delta level of level %d\n", level);
+
+
+  // Replace immutable memtable with the generated Table
+  if (ok) {
+    edit->SetPrevLogNumber(0);
+    edit->SetLogNumber(logfile_number_);  // Earlier logs no longer needed
+
+    versions_->LogAndApply(edit, &mutex_);
+  }
+
+  delete edit;
   mutex_.Unlock();
   return 0;
 }

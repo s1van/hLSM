@@ -459,15 +459,8 @@ void LazyVersionEdit::AddLazyFileByRawLevel(int raw_level, uint64_t file,
 	if (llevel == 0) {
 		AddLazyFile(raw_level, file, file_size, smallest, largest);
 
-	// within the range of two-phase compaction, copy files in X.R to X.delta?, X.L to X.NEW
+	// within the range of two-phase compaction, copy files in X.R to X.delta?, X.L also to X.delta
 	} else if (llevel > 0 && llevel <= hlsm::runtime::two_phase_end_level){
-		// X.L
-		if (raw_level %2 == 1) {
-			AddLazyFile(hlsm::get_hlsm_new_level(raw_level),
-					file, file_size, smallest, largest);
-
-		// X.R
-		} else {
 			int dlevel = hlsm::get_active_delta_level(delta_meta_, llevel);
 			AddLazyFile(dlevel, file, file_size, smallest, largest);
 
@@ -476,7 +469,6 @@ void LazyVersionEdit::AddLazyFileByRawLevel(int raw_level, uint64_t file,
 			if (hlsm::max_fnum_in_level(raw_level - 2) - 1 <= lv->NumFiles(dlevel) ) {
 				AdvanceActiveDeltaLevel(llevel);
 			}
-		}
 
   // levels that are out of the control of the two-phase compaction
 	} else if (llevel > hlsm::runtime::two_phase_end_level ) {

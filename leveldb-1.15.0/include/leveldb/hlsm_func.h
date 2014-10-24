@@ -117,12 +117,12 @@ inline double DefaultMaxBytesForLevel(int level) {
 
 /*
  * hLSM Level conversion
- * on_primary		on_secondary		logically	physical_pri	physical_sec
- * L0.L|L0.R		L0.L|L0.R				LL0				L1|L0					L1|L0
- * L1.L|L1.R		L1.NEW|…|R2|R1	LL1				L3|L2					L?|…|L3|L2
+ * on_primary   on_secondary    logically	physical_pri  physical_sec
+ * L0.L|L0.R    L0.L|L0.R       LL0       L1|L0         L1|L0
+ * L1.L|L1.R    L1.NEW|…|R2|R1  LL1       L3|L2         L?|…|L3|L2
  * ......
- * X.L|X.R			…|R2|R1					LLX 			(end of 2-phase level)
- * X+1.L|X+1.R	X+1.L|X+1.R			LL<X+1>
+ * X.L|X.R      …|R2|R1         LLX       (end of 2-phase level)
+ * X+1.L|X+1.R  X+1.L|X+1.R     LL<X+1>
  */
 
 inline int get_logical_level(int original_level) {
