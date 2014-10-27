@@ -112,7 +112,7 @@ static void VersionEditPrinter(Slice record) {
   Status s = edit.DecodeFrom(record);
   if (!s.ok()) {
     printf("%s\n", s.ToString().c_str());
-    delete edit;
+    delete &edit;
     return;
   }
   printf("%s", edit.DebugString().c_str());

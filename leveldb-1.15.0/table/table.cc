@@ -92,7 +92,7 @@ Status Table::Open(const Options& options,
 
     if (hlsm::is_primary_file(file->GetFileName())) {
     	rep->primary_ = file;
-	DEBUG_INFO(3, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
+    	DEBUG_INFO(3, "%p, %s\n", rep->primary_, rep->primary_->GetFileName().c_str());
     } else {
     	rep->secondary_ = file;
     }

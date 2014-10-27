@@ -27,6 +27,8 @@ inline static int table_name_to_number(const std::string& fname) {
 }
 
 inline bool is_primary_file(const std::string& fname) {
+	if (hlsm::config::primary_storage_path == NULL)
+		return true; //Default Mode
 	return HAS_SUBSTR(fname, hlsm::config::primary_storage_path);
 }
 
