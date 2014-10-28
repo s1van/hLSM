@@ -125,6 +125,7 @@ static double FLAGS_countdown = -1;
 static double rwrandom_wspeed = 0;
 
 static int FLAGS_random_seed = 301;
+static int FLAGS_ycsb_compatible = 0;
 
 static volatile int rwrandom_read_completed = 0;
 static volatile int rwrandom_write_completed = 0;
@@ -1294,6 +1295,8 @@ int main(int argc, char** argv) {
       hlsm::config::iterator_prefetch = n;
     } else if (sscanf(argv[i], "--raw_prefetch=%d%c", &n, &junk) == 1) {
       hlsm::config::raw_prefetch = n;
+    } else if (sscanf(argv[i], "--ycsb_compatible=%lf%c", &d, &junk) == 1) {
+      FLAGS_ycsb_compatible = d;
     } else if (strncmp(argv[i], "--debug_file=", 13) == 0) {
       hlsm::config::debug_file = argv[i] + 13;
     } else if (strncmp(argv[i], "--monitor_log=", 14) == 0) {

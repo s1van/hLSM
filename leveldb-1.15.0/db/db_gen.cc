@@ -52,6 +52,7 @@ static int64_t FLAGS_write_span = -1;
 
 static int FLAGS_cache_size = 131072;
 static int FLAGS_random_seed = 301;
+static int FLAGS_ycsb_compatible = 0;
 
 using namespace leveldb;
 
@@ -154,6 +155,7 @@ public:
 		WriteBatch batch;
 		batch.Clear();
 		Status s;
+		hlsm::YCSBKeyGenerator *ycsb_gen;
 
 		int done = 0, bnum = 0;
 		char key[100];
@@ -174,14 +176,24 @@ public:
 				clevel_max_fnum = hlsm::max_fnum_in_level(level);
 				clevel_fnum = 0;
 
+				// reinitialize ycsb generator for the new level
+				if (FLAGS_ycsb_compatible) {
+					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum,
+							(int) leveldb::config::kTargetFileSize/FLAGS_value_size);
+				}
+
 				file_key_span = (int) (FLAGS_write_span / clevel_max_fnum);
 				file_key_start = FLAGS_write_from;
 				DEBUG_INFO(2, "start: %ld, span: %ld, fnum_max: %d, level: %d\n",
 						file_key_start, file_key_span, clevel_max_fnum, level);
 			}
 
-			const uint64_t k = file_key_start + (rand_.Next64() % file_key_span);
-			snprintf(key, sizeof(key), "%020ld", k);
+			if (FLAGS_ycsb_compatible) {
+				snprintf(key, sizeof(key), "user%019ld", ycsb_gen->nextKey());
+			} else {
+				const uint64_t k = file_key_start + (rand_.Next64() % file_key_span);
+				snprintf(key, sizeof(key), "%020ld", k);
+			}
 			batch.Put(key, gen.Generate(value_size_));
 
 			done++;
@@ -255,6 +267,8 @@ int main(int argc, char** argv) {
       leveldb::config::kTargetFileSize = n * 1048576; // in MiB
     } else if (sscanf(argv[i], "--random_seed=%lf%c", &d, &junk) == 1) {
       FLAGS_random_seed = d;
+    } else if (sscanf(argv[i], "--ycsb_compatible=%lf%c", &d, &junk) == 1) {
+      FLAGS_ycsb_compatible = d;
     } else if (sscanf(argv[i], "--level0_size=%d%c", &n, &junk) == 1) {
       leveldb::config::kL0_Size = n;
     } else if (sscanf(argv[i], "--level_ratio=%d%c", &n, &junk) == 1) {

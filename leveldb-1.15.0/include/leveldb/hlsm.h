@@ -13,5 +13,6 @@
 #include "leveldb/hlsm_types.h"
 #include "leveldb/hlsm_func.h"
 #include "leveldb/hlsm_param.h"
+#include "leveldb/hlsm_util.h"
 
 #endif  //HLSM_H

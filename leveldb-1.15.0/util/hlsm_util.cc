@@ -431,6 +431,72 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
     DEBUG_INFO(3, "END\t%s\t%s\n", filename_.c_str(), sfilename_.c_str());
     return s;
   }
+
+
+
+  /********* YCSBKeyGenerator in hlsm_util.h *********/
+
+  long YCSBKeyGenerator::hash(long long val)
+  {
+  	long long FNV_offset_basis_64=0xCBF29CE484222325LL;
+  	long long FNV_prime_64=1099511628211LL;
+  	long long hashval = FNV_offset_basis_64;
+  	for (int i=0; i<8; i++)
+  	{
+  		long octet=val&0x00ff;
+  		val=val>>8;
+  		hashval = hashval ^ octet;
+  		hashval = hashval * FNV_prime_64;
+  	}
+  	return labs(hashval);
+  }
+
+  void YCSBKeyGenerator::sort(long *num, int top, int bottom)
+  {
+  	int middle;
+  	if (top < bottom)
+  	{
+  		middle = partition(num, top, bottom);
+  		sort(num, top, middle);   // sort first section
+  		sort(num, middle+1, bottom);    // sort second section
+  	}
+  	return;
+  }
+
+  int YCSBKeyGenerator::partition(long *array, int top, int bottom)
+  {
+  	long x = array[top];
+  	int i = top - 1;
+  	int j = bottom + 1;
+  	long temp;
+  	do
+  	{
+  		do
+  		{
+  			j--;
+  		}while (x >array[j]);
+
+  		do
+  		{
+  			i++;
+  		} while (x <array[i]);
+
+  		if (i < j)
+  		{
+  			temp = array[i];
+  			array[i] = array[j];
+  			array[j] = temp;
+  		}
+  	}while (i < j);
+  	return j;           // returns middle subscript
+  }
+
+  long YCSBKeyGenerator::nextKey()
+  {
+  	return keypool[index++];
+  }
+
+
 } // hlsm
 
 
