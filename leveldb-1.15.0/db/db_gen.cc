@@ -178,7 +178,7 @@ public:
 
 				// reinitialize ycsb generator for the new level
 				if (FLAGS_ycsb_compatible) {
-					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum,
+					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum+1,
 							(int) leveldb::config::kTargetFileSize/FLAGS_value_size);
 				}
 
