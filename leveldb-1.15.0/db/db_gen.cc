@@ -168,7 +168,7 @@ public:
 
 		for (int i = 0; done < FLAGS_num; i++) {
 			// current level is finished, move to next level
-			if (clevel_fnum > clevel_max_fnum) {
+			if (clevel_max_fnum == 0 || clevel_fnum > clevel_max_fnum) {
 				if (level % 2 == 1) {
 					reinterpret_cast<DBImpl*>(db_)->AdvanceHLSMActiveDeltaLevel(level);
 				}
