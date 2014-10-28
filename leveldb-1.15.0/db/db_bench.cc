@@ -968,7 +968,7 @@ class Benchmark {
         waited ++;
         if (waited % 20 == 0) {
           DEBUG_INFO(3, "waited = %d, wait_us = %d\n", waited, wait_us);
-          wait_us *= 2;
+          if (wait_us < 131072) wait_us *= 2;
         }
       } else {
         wait_us = RW_WAIT_US;
