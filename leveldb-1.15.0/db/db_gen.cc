@@ -54,6 +54,10 @@ static int FLAGS_cache_size = 131072;
 static int FLAGS_random_seed = 301;
 static int FLAGS_ycsb_compatible = 0;
 
+// generate more files per level (than maximum number of files before triggering compaction)
+//     to activate compaction at the beginning
+static int FLAGS_extra_files_per_level = 0;
+
 using namespace leveldb;
 
 // Helper for quickly generating random data from db_bench.cc
@@ -168,7 +172,7 @@ public:
 
 		for (int i = 0; done < FLAGS_num; i++) {
 			// current level is finished, move to next level
-			if (clevel_max_fnum == 0 || clevel_fnum > clevel_max_fnum) {
+			if (clevel_max_fnum == 0 || clevel_fnum >= clevel_max_fnum + FLAGS_extra_files_per_level) {
 				if (level % 2 == 1) {
 					reinterpret_cast<DBImpl*>(db_)->AdvanceHLSMActiveDeltaLevel(level);
 				}
@@ -178,11 +182,11 @@ public:
 
 				// reinitialize ycsb generator for the new level
 				if (FLAGS_ycsb_compatible) {
-					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum+1,
+					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum + FLAGS_extra_files_per_level,
 							(int) leveldb::config::kTargetFileSize/FLAGS_value_size);
 				}
 
-				file_key_span = (int) (FLAGS_write_span / clevel_max_fnum);
+				file_key_span = (int) (FLAGS_write_span / (clevel_max_fnum + FLAGS_extra_files_per_level));
 				file_key_start = FLAGS_write_from;
 				DEBUG_INFO(2, "start: %ld, span: %ld, fnum_max: %d, level: %d\n",
 						file_key_start, file_key_span, clevel_max_fnum, level);
@@ -212,9 +216,11 @@ public:
 				// write one immutable table, move to next file
 				if (reinterpret_cast<DBImpl*>(db_)->MaybeCompactMemTableToLevel(level) == 1) {
 					clevel_fnum++;
-					file_key_start += file_key_span;
-					DEBUG_INFO(2, "start: %ld, span: %ld, fnum_max: %d, level: %d, fnum: %d\n",
-											file_key_start, file_key_span, clevel_max_fnum, level, clevel_fnum);
+					if (!FLAGS_ycsb_compatible) {
+						file_key_start += file_key_span;
+						DEBUG_INFO(2, "start: %ld, span: %ld, fnum_max: %d, level: %d, fnum: %d\n",
+												file_key_start, file_key_span, clevel_max_fnum, level, clevel_fnum);
+					}
 				}
 			}
 		}
@@ -277,6 +283,8 @@ int main(int argc, char** argv) {
       hlsm::config::debug_level = n;
     } else if (sscanf(argv[i], "--run_compaction=%d%c", &n, &junk) == 1) {
       hlsm::config::run_compaction = n;
+    } else if (sscanf(argv[i], "--extra_files_per_level=%d%c", &n, &junk) == 1) {
+    	FLAGS_extra_files_per_level = n;
     } else if (strncmp(argv[i], "--debug_file=", 13) == 0) {
       hlsm::config::debug_file = argv[i] + 13;
     } else {

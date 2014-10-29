@@ -1011,9 +1011,9 @@ class Benchmark {
     time(&begin);
     int i = 0;
     int wnum = (int)(((double)num_ * (100-FLAGS_read_percent)) / 100);
+    fprintf(stderr, "RWRandom_Write will write %d ops\n", wnum);
     if (rwrandom_wspeed > 0)
       wnum = num_ * 10;
-    fprintf(stderr, "RWRandom_Write will write %d ops\n", wnum);
 
     int done = 0;
     double ct_waited = 0;

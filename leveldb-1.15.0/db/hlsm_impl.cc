@@ -319,8 +319,8 @@ Status DBImpl::WriteLevel0TableToLevel(MemTable* mem, VersionEdit* edit,
   meta.number = versions_->NewFileNumber();
   pending_outputs_.insert(meta.number);
   Iterator* iter = mem->NewIterator();
-  Log(options_.info_log, "Level-0 table #%llu: started",
-      (unsigned long long) meta.number);
+  Log(options_.info_log, "Level-0 table #%llu: started written to level %d",
+      (unsigned long long) meta.number, level);
   DEBUG_INFO(3, "Write to level %d [start]\n", level);
 
   Status s;
