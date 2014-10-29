@@ -3,7 +3,7 @@
 
 namespace hlsm {
 
-static long YSCSKey_hash(long long val);
+static long YCSBKey_hash(long long val);
 
 class YCSBKeyGenerator{
 private:
@@ -15,7 +15,7 @@ public:
 		keypool = new long[keysize*filenum];
 		for(long long i=0;i<keysize*filenum;i++)
 		{
-			keypool[i] = YSCSKey_hash(i);
+			keypool[i] = YCSBKey_hash(i);
 		}
 		sort(keypool,0,keysize*filenum);
 	}

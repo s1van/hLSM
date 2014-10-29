@@ -436,7 +436,7 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
 
   /********* YCSBKeyGenerator in hlsm_util.h *********/
 
-  static long YSCSKey_hash(long long val)
+  static long YCSBKey_hash(long long val)
   {
   	long long FNV_offset_basis_64=0xCBF29CE484222325LL;
   	long long FNV_prime_64=1099511628211LL;
