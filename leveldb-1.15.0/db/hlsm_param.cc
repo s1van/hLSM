@@ -33,7 +33,7 @@ bool iterator_prefetch = false;
 bool raw_prefetch = false;
 bool append_by_opq = false;
 bool use_mmap_file = true;
-bool restrict_L0_score = true;
+double restrict_L0_score = 0;
 
 int debug_level = 0;
 char* debug_file = NULL;

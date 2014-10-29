@@ -365,6 +365,7 @@ int main(int argc, char **argv) {
         ("secondary-dir,D", po::value<std::string>(&sec_dir)->default_value("/tmp"), "secondary data directory")
         ("level-ratio,R", po::value<int>(&leveldb::config::kLevelRatio)->default_value(10), "adjacent level size ratio")
         ("max-level,M", po::value<int>(&hlsm::config::kMaxLevel)->default_value(4), "adjacent level size ratio")
+        ("restrict-level0-score,s", po::value<double>(&hlsm::config::restrict_L0_score)->default_value(1.0), "maximum level0 score")
         ;
 
     po::options_description cmdline_options;

@@ -1069,8 +1069,9 @@ void VersionSet::Finalize(Version* v) {
       // setting, or very high compression ratios, or lots of
       // overwrites/deletions).
       score = hlsm::cursor::calculate_level0_compaction_score(v->files_[level].size(), v->files_[level+1].size());
-      if (hlsm::config::restrict_L0_score) {
-      	score = (score > 1) ? 1 : score;
+      if (hlsm::config::restrict_L0_score > 0) {
+      	score = (score > hlsm::config::restrict_L0_score) ?
+      			hlsm::config::restrict_L0_score : score;
       }
       DEBUG_INFO((score>0 ? 1:100), "level %d, score = %.3f, #f = %lu, bytes = %lu\n", 
       		level, score, v->files_[level].size(), TotalFileSize(v->files_[level]));

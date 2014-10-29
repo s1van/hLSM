@@ -968,7 +968,7 @@ class Benchmark {
         waited ++;
         if (waited % 20 == 0) {
           DEBUG_INFO(3, "waited = %d, wait_us = %d\n", waited, wait_us);
-          if (wait_us < 131072) wait_us *= 2;
+          if (wait_us < 32768) wait_us *= 2;
         }
       } else {
         wait_us = RW_WAIT_US;
@@ -1275,8 +1275,8 @@ int main(int argc, char** argv) {
       leveldb::config::kTargetFileSize = n * 1048576; // in MiB
     } else if (sscanf(argv[i], "--level0_size=%d%c", &n, &junk) == 1) {
       leveldb::config::kL0_Size = n;
-    } else if (sscanf(argv[i], "--restrict_level0_score=%d%c", &n, &junk) == 1) {
-      hlsm::config::restrict_L0_score = n;
+    } else if (sscanf(argv[i], "--restrict_level0_score=%lf%c", &d, &junk) == 1) {
+      hlsm::config::restrict_L0_score = d;
     } else if (sscanf(argv[i], "--level_ratio=%d%c", &n, &junk) == 1) {
       leveldb::config::kLevelRatio = n;
     } else if (sscanf(argv[i], "--max_level=%d%c", &n, &junk) == 1) {
