@@ -829,7 +829,7 @@ class Benchmark {
   void WriteRandom(ThreadState* thread) {
     DoWrite(thread, false);
   }
-
+/*modification required for key*/
   void DoWrite(ThreadState* thread, bool seq) {
     if (num_ != FLAGS_num) {
       char msg[100];
@@ -885,6 +885,7 @@ class Benchmark {
     delete iter;
     thread->stats.AddBytes(bytes);
   }
+/*modification required for key*/
 
   void ReadRandom(ThreadState* thread) {
     ReadOptions options;
@@ -904,6 +905,7 @@ class Benchmark {
     thread->stats.AddMessage(msg);
   }
 
+/*modification required for key*/
 
   void RWRandom_Read(ThreadState* thread) {
     ReadOptions options;
@@ -935,8 +937,12 @@ class Benchmark {
     for (i = 0; done < rnum; i++) {
       char key[100];
       time(&now);
-      const int64_t k = thread->rand->Next64() % FLAGS_read_span;
-      snprintf(key, sizeof(key), "%020ld", k);
+      const int64_t k = (thread->rand->Next64() % FLAGS_read_span) + FLAGS_read_from;
+      if (FLAGS_ycsb_compatible) {
+        snprintf(key, sizeof(key), "user%019ld", hlsm::YCSBKey_hash(k));
+      } else {
+        snprintf(key, sizeof(key), "%020ld", k);
+      }
       DEBUG_MEASURE_RECORD(2, (s = db_->Get(options, key, &value)), "RW--Get" );
       isFound = s.ok();
 
@@ -991,6 +997,7 @@ class Benchmark {
     fprintf(stderr, "rwrandom completes %d read ops (out of %d) in %.3f seconds, %d found, wait %.4f sec (%d)\n",
       done, rwrandom_read_completed, difftime(now, begin), found, ct_waited/1000000, c_waited);
   }
+/*modification required for key*/
 
   void RWRandom_Write(ThreadState* thread) {
     ReadOptions options;
@@ -1026,7 +1033,11 @@ class Benchmark {
           rwrandom_write_completed < 
             (rwrandom_read_completed + rwrandom_write_completed) * ((double)(100 - FLAGS_read_percent) / 100)  + RW_RELAX) ) {
         const uint64_t k = FLAGS_write_from + (thread->rand->Next64() % FLAGS_write_span);
-        snprintf(key, sizeof(key), "%020ld", k);
+        if (FLAGS_ycsb_compatible) {
+          snprintf(key, sizeof(key), "user%019ld", hlsm::YCSBKey_hash(k));
+        } else {
+          snprintf(key, sizeof(key), "%020ld", k);
+        }
         batch.Put(key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);
         bnum ++;
@@ -1066,6 +1077,7 @@ class Benchmark {
       done, difftime(now, begin), ct_waited/1000000, c_waited);
 
   }
+/*modification required for key*/
 
   void ReadMissing(ThreadState* thread) {
     ReadOptions options;
@@ -1078,6 +1090,7 @@ class Benchmark {
       thread->stats.FinishedSingleOp();
     }
   }
+/*modification required for key*/
 
   void ReadHot(ThreadState* thread) {
     ReadOptions options;
@@ -1091,6 +1104,7 @@ class Benchmark {
       thread->stats.FinishedSingleOp();
     }
   }
+/*modification required for key*/
 
   void SeekRandom(ThreadState* thread) {
     ReadOptions options;
@@ -1110,6 +1124,7 @@ class Benchmark {
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
   }
+/*modification required for key*/
 
   void DoDelete(ThreadState* thread, bool seq) {
     RandomGenerator gen;
@@ -1139,6 +1154,7 @@ class Benchmark {
   void DeleteRandom(ThreadState* thread) {
     DoDelete(thread, false);
   }
+/*modification required for key*/
 
   void ReadWhileWriting(ThreadState* thread) {
     if (thread->tid > 0) {
