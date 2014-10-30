@@ -453,6 +453,25 @@ private:
 	leveldb::port::Mutex mutex_;
 };
 
+
+class Throttler{
+private:
+	uint64_t speed_limit;
+	uint64_t done;// #finished operations, items, ...
+	time_t start; // start time
+
+public:
+	Throttler(uint64_t limit):speed_limit(limit), done(0) {
+		time(&start);
+	}
+
+	~Throttler(){}
+
+	int add(uint64_t done);
+	int throttle();
+
+};
+
 } // hlsm
 
 #endif  //HLSM_TYPES_H

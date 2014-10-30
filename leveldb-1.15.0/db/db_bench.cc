@@ -1311,8 +1311,10 @@ int main(int argc, char** argv) {
       hlsm::config::iterator_prefetch = n;
     } else if (sscanf(argv[i], "--raw_prefetch=%d%c", &n, &junk) == 1) {
       hlsm::config::raw_prefetch = n;
-    } else if (sscanf(argv[i], "--ycsb_compatible=%lf%c", &d, &junk) == 1) {
-      FLAGS_ycsb_compatible = d;
+    } else if (sscanf(argv[i], "--ycsb_compatible=%n%c", &n, &junk) == 1) {
+      FLAGS_ycsb_compatible = n;
+    } else if (sscanf(argv[i], "--compaction_limit_mb_per_sec=%d%c", &n, &junk) == 1) {
+      hlsm::runtime::compaction_throttler = new hlsm::Throttler((uint64_t)n * 1024 * 1024);
     } else if (strncmp(argv[i], "--debug_file=", 13) == 0) {
       hlsm::config::debug_file = argv[i] + 13;
     } else if (strncmp(argv[i], "--monitor_log=", 14) == 0) {

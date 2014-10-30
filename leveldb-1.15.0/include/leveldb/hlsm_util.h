@@ -1,6 +1,8 @@
 #ifndef HLSM_UTIL_H
 #define HLSM_UTIL_H
 
+#include <time.h>
+
 namespace hlsm {
 
 static inline long YCSBKey_hash(long long val)
@@ -23,6 +25,7 @@ private:
 	long *keypool;
 	int index;
 	int max;
+
 public:
 	YCSBKeyGenerator(int startnum, int filenum, int keysize):index(0) {
 		keypool = new long[keysize*filenum];
@@ -39,8 +42,6 @@ public:
 	int partition(long *array, int top, int bottom);
 	long nextKey();
 };
-
-
 
 } // hlsm
 

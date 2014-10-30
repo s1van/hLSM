@@ -51,6 +51,7 @@ opq hop_queue = NULL;
 FILE *debug_fd = stderr;
 leveldb::port::Mutex debug_mutex_;
 hlsm::NamedCounter counters;
+hlsm::Throttler *compaction_throttler = NULL;
 
 bool delete_primary_only = false;
 

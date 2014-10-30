@@ -2,6 +2,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/sendfile.h>  // sendfile
 #include <fcntl.h>         // open
 #include <unistd.h>        // close
@@ -434,7 +435,7 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
 
 
 
-  /********* YCSBKeyGenerator in hlsm_util.h *********/
+  /********* defined in hlsm_util.h *********/
 
   void YCSBKeyGenerator::sort(long *num, int top, int bottom)
   {
@@ -480,6 +481,28 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
   {
   	return keypool[index++];
   }
+
+
+	int Throttler::add(uint64_t _done) {
+		done += _done;
+		return 0;
+	}
+
+	int Throttler::throttle() {
+		time_t now;
+		time(&now);
+		double duration = difftime(now, start);
+		double gap = done - duration * speed_limit; // implies over-speed
+
+		DEBUG_INFO(4, "duration = %lf, gap = %lf, done = %lu, speed_limit = %lu\n",
+				duration, gap, done, speed_limit);
+
+		if (gap > 0) {
+			Env::Default()->SleepForMicroseconds( (int)(gap/speed_limit * 1000000) );
+		}
+
+		return 0;
+	}
 
 
 } // hlsm

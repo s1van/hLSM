@@ -506,6 +506,10 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   delete iter;
   pending_outputs_.erase(meta.number);
 
+  if (hlsm::runtime::compaction_throttler != NULL) {
+    	// write level-0 table
+    	hlsm::runtime::compaction_throttler->add(meta.file_size);
+  }
 
   // Note that if file_size is zero, the file has been deleted and
   // should not be added to the manifest.
@@ -1075,6 +1079,13 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   VersionSet::LevelSummaryStorage tmp;
   Log(options_.info_log,
       "compacted to: %s", versions_->LevelSummary(&tmp));
+
+  if (hlsm::runtime::compaction_throttler != NULL) {
+  	// add read and write bytes
+  	hlsm::runtime::compaction_throttler->add(compact->total_bytes * 2);
+  	hlsm::runtime::compaction_throttler->throttle();
+  }
+
   return status;
 }
 

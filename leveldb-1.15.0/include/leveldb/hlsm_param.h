@@ -57,11 +57,12 @@ extern opq hop_queue; // for high priority operations
 extern FILE *debug_fd;	// initialized using hlsm::config::debug_file (default: stderr)
 extern leveldb::port::Mutex debug_mutex_;
 extern hlsm::NamedCounter counters;
+extern hlsm::Throttler *compaction_throttler;
 
 // used only by DeleteFile in env_posix.cc with single thread
 extern bool delete_primary_only;
 
-extern bool  use_opq_thread;
+extern bool use_opq_thread;
 extern bool full_mirror;
 extern int mirror_start_level;
 extern int top_mirror_end_level;

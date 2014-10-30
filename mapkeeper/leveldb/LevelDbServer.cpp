@@ -347,6 +347,7 @@ int main(int argc, char **argv) {
     std::string dir;
     po::variables_map vm;
     po::options_description config("");
+    uint64_t climit_mb;
 
     std::string mode;
     std::string sec_dir;
@@ -366,6 +367,7 @@ int main(int argc, char **argv) {
         ("level-ratio,R", po::value<int>(&leveldb::config::kLevelRatio)->default_value(10), "adjacent level size ratio")
         ("max-level,M", po::value<int>(&hlsm::config::kMaxLevel)->default_value(4), "adjacent level size ratio")
         ("restrict-level0-score,s", po::value<double>(&hlsm::config::restrict_L0_score)->default_value(1.0), "maximum level0 score")
+        ("compaction-limit-mb-per-sec,c", po::value<uint64_t>(&climit_mb)->default_value(50), "compaction speed limits (MB/s)")
         ;
 
     po::options_description cmdline_options;
@@ -387,6 +389,7 @@ int main(int argc, char **argv) {
     hlsm::config::iterator_prefetch = 1;
     hlsm::config::debug_file = "/tmp/hlsm_log";
     hlsm::config::debug_level = 1;
+    hlsm::runtime::compaction_throttler = new hlsm::Throttler(climit_mb * 1024 * 1024);
 
     syncmode = vm.count("sync");
     blindinsert = vm.count("blindinsert");
