@@ -387,7 +387,7 @@ int main(int argc, char **argv) {
     leveldb::config::kL0_Size = 100;
     hlsm::config::preload_metadata = 1;
     hlsm::config::iterator_prefetch = 1;
-    hlsm::config::debug_file = "/tmp/hlsm_log";
+    hlsm::config::debug_file = "./hlsm_log";
     hlsm::config::debug_level = 1;
     hlsm::runtime::compaction_throttler = new hlsm::Throttler(climit_mb * 1024 * 1024);
 

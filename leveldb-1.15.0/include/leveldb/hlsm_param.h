@@ -39,7 +39,7 @@ extern bool iterator_prefetch;
 extern bool raw_prefetch;
 extern bool append_by_opq;
 extern bool use_mmap_file;
-extern bool restrict_L0_score; // to reserve a good shape
+extern double restrict_L0_score; // to reserve a good shape
 
 extern int debug_level;	// default value 0 is; info whose level is smaller or equal to debug_level will be displayed
 extern char* debug_file;// where to dump the debug info

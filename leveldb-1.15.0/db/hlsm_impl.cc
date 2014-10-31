@@ -29,8 +29,8 @@ Status TableCache::PreLoadTable(uint64_t file_number, uint64_t file_size) {
 	Cache::Handle* handle = NULL;
 	Status s = FindTable(file_number, file_size, &handle);
 	DEBUG_INFO(3, "file: %lu, size: %lu\n", file_number, file_size);
-	assert(handle != NULL);
-	cache_->Release(handle);
+	// assert(handle != NULL);
+	if(handle != NULL) cache_->Release(handle);
 
 	return s;
 }

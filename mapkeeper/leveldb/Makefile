@@ -8,7 +8,7 @@ all :
         -lboost_thread -lboost_filesystem -lboost_program_options -lthrift -I ../thrift/gen-cpp -lboost_system \
 	-L $(THRIFT_DIR)/lib \
         -L ../thrift/gen-cpp -lmapkeeper \
-	-L ../../leveldb-1.15.0/db -lleveldb \
+	-L ../../leveldb-1.15.0 -lleveldb \
            -Wl,-rpath,\$$ORIGIN/../thrift/gen-cpp			\
            -Wl,-rpath,$(THRIFT_DIR)/lib  \
 	   -DLEVELDB_PLATFORM_POSIX
