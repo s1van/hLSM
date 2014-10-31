@@ -40,8 +40,11 @@ PRELOAD_META=1;
 RUN_COMPACTION=1;
 MAX_LEVEL=-1;
 
+RESTRICT_LEVEL0_SCORE=20;
+YCSB_COMPATIBLE=1;
+COMPACTION_LIMIT_MB_PER_SEC=300;
 prep_rwrandom() {
-	ARGS="--db=$STORE --benchmarks=rwrandom --num=$NUM --use_existing_db=$USE_DB --value_size=$VALUE_SIZE --read_percent=$RRATIO --threads=$THREADS --read_key_from=$READ_FROM --read_key_upto=$READ_UPTO --write_key_from=$WRITE_FROM --write_key_upto=$WRITE_UPTO --write_buffer_size=$BUFFER_SIZE --open_files=$OPEN_FILES --bloom_bits=$BLOOM_BITS --hlsm_mode=$MODE --hlsm_secondary_storage_path=$SEC_STORAGE --level_ratio=$LEVEL_RATIO --file_size=$FILE_SIZE --histogram=1 --countdown=$COUNTDOWN --compression_ratio=1 --debug_level=$DEBUG_LEVEL --monitor_log=$MLOG --bloom_bits_use=$BLOOM_BITS_USE --level0_size=$LEVEL0_SIZE --preload_metadata=$PRELOAD_META --debug_file=/tmp/hlsm_log --max_level=$MAX_LEVEL --run_compaction=$RUN_COMPACTION --iterator_prefetch=$ITERATOR_PREFETCH --cache_size=$(($CACHE_SIZE * 1024 * 1024)) --raw_prefetch=$RAW_PREFETCH";
+	ARGS="--db=$STORE --benchmarks=rwrandom --num=$NUM --use_existing_db=$USE_DB --value_size=$VALUE_SIZE --read_percent=$RRATIO --threads=$THREADS --read_key_from=$READ_FROM --read_key_upto=$READ_UPTO --write_key_from=$WRITE_FROM --write_key_upto=$WRITE_UPTO --write_buffer_size=$BUFFER_SIZE --open_files=$OPEN_FILES --bloom_bits=$BLOOM_BITS --hlsm_mode=$MODE --hlsm_secondary_storage_path=$SEC_STORAGE --level_ratio=$LEVEL_RATIO --file_size=$FILE_SIZE --histogram=1 --countdown=$COUNTDOWN --compression_ratio=1 --debug_level=$DEBUG_LEVEL --monitor_log=$MLOG --bloom_bits_use=$BLOOM_BITS_USE --level0_size=$LEVEL0_SIZE --preload_metadata=$PRELOAD_META --debug_file=/tmp/hlsm_log --max_level=$MAX_LEVEL --run_compaction=$RUN_COMPACTION --iterator_prefetch=$ITERATOR_PREFETCH --cache_size=$(($CACHE_SIZE * 1024 * 1024)) --raw_prefetch=$RAW_PREFETCH --restrict_level0_score=$RESTRICT_LEVEL0_SCORE --ycsb_compatible=$YCSB_COMPATIBLE --compaction_limit_mb_per_sec=$COMPACTION_LIMIT_MB_PER_SEC";
 	echo "$EXEC $ARGS";
 }
 

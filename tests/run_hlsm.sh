@@ -76,8 +76,8 @@ wait;
 }
 
 # global variables
-TDIR=$HOME/store/trace/hlsm/hlsm;
-RDIR=$HOME/store/result/hlsm/hlsm;
+TDIR=$HOME/store/trace/hlsm;
+RDIR=$HOME/store/result/hlsm;
 CDIR=`dirname $0`/conf/hlsm;
 
 # block devices used
@@ -92,7 +92,7 @@ BASE=r4_base_h;
 
 #write_test h_w $CDIR/h_w.conf;
 #run_test h_w_a $CDIR/h_w_a.conf;
-#run_test h_max $CDIR/h_max.conf;
-run_test h_90 $CDIR/h_90.conf;
-run_test h_50 $CDIR/h_50.conf;
+run_test h_max $CDIR/h_max.conf;
+#run_test h_90 $CDIR/h_90.conf;
+#run_test h_50 $CDIR/h_50.conf;
 
