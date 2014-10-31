@@ -6,9 +6,9 @@ all :
 	g++ -pthread -Wall -o $(EXECUTABLE) *cpp -I $(THRIFT_DIR)/include/thrift -I $(THRIFT_DIR)/include \
 	-I ../../leveldb-1.15.0/include -I ../../leveldb-1.15.0 \
         -lboost_thread -lboost_filesystem -lboost_program_options -lthrift -I ../thrift/gen-cpp -lboost_system \
+	-L ../../leveldb-1.15.0 -lleveldb \
 	-L $(THRIFT_DIR)/lib \
         -L ../thrift/gen-cpp -lmapkeeper \
-	-L ../../leveldb-1.15.0 -lleveldb \
            -Wl,-rpath,\$$ORIGIN/../thrift/gen-cpp			\
            -Wl,-rpath,$(THRIFT_DIR)/lib  \
 	   -DLEVELDB_PLATFORM_POSIX
