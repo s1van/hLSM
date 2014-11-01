@@ -939,9 +939,9 @@ class Benchmark {
       time(&now);
       const int64_t k = (thread->rand->Next64() % FLAGS_read_span) + FLAGS_read_from;
       if (FLAGS_ycsb_compatible) {
-        snprintf(key, sizeof(key), "user%019ld", hlsm::YCSBKey_hash(k));
+        snprintf(key, sizeof(key), "user%019lld", hlsm::YCSBKey_hash(k));
       } else {
-        snprintf(key, sizeof(key), "%020ld", k);
+        snprintf(key, sizeof(key), "%020lu", k);
       }
       DEBUG_MEASURE_RECORD(2, (s = db_->Get(options, key, &value)), "RW--Get" );
       isFound = s.ok();
@@ -951,7 +951,7 @@ class Benchmark {
         found++;
         DEBUG_INFO(3, "read found %.3f, %.3f, %d\n", rwrandom_wspeed, difftime(now, begin), done);
       } else {
-        DEBUG_INFO(3, "Not Found since %s\n",s.ToString().c_str() );
+        DEBUG_INFO(3, "Not Found key %s (k = %lu) since %s\n",key, k, s.ToString().c_str() );
       }
 
       thread->stats.FinishedReadOp();
@@ -1034,9 +1034,9 @@ class Benchmark {
             (rwrandom_read_completed + rwrandom_write_completed) * ((double)(100 - FLAGS_read_percent) / 100)  + RW_RELAX) ) {
         const uint64_t k = FLAGS_write_from + (thread->rand->Next64() % FLAGS_write_span);
         if (FLAGS_ycsb_compatible) {
-          snprintf(key, sizeof(key), "user%019ld", hlsm::YCSBKey_hash(k));
+          snprintf(key, sizeof(key), "user%019lld", hlsm::YCSBKey_hash(k));
         } else {
-          snprintf(key, sizeof(key), "%020ld", k);
+          snprintf(key, sizeof(key), "%020lu", k);
         }
         batch.Put(key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);

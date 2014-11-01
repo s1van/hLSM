@@ -57,6 +57,7 @@ static int FLAGS_ycsb_compatible = 0;
 // generate more files per level (than maximum number of files before triggering compaction)
 //     to activate compaction at the beginning
 static int FLAGS_extra_files_per_level = 0;
+static int kv_pair_overhead_bytes = 30;
 
 using namespace leveldb;
 
@@ -183,7 +184,8 @@ public:
 				// reinitialize ycsb generator for the new level
 				if (FLAGS_ycsb_compatible) {
 					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum + FLAGS_extra_files_per_level,
-							(int) leveldb::config::kTargetFileSize/FLAGS_value_size);
+							(int) leveldb::config::kTargetFileSize/ (FLAGS_value_size + kv_pair_overhead_bytes));
+					DEBUG_INFO(2, "New level %d starts with %d (YCSBKeyGen)\n", level, i);
 				}
 
 				file_key_span = (int) (FLAGS_write_span / (clevel_max_fnum + FLAGS_extra_files_per_level));
@@ -193,11 +195,12 @@ public:
 			}
 
 			if (FLAGS_ycsb_compatible) {
-				snprintf(key, sizeof(key), "user%019ld", ycsb_gen->nextKey());
+				snprintf(key, sizeof(key), "user%019lld", ycsb_gen->nextKey());
 			} else {
 				const uint64_t k = file_key_start + (rand_.Next64() % file_key_span);
-				snprintf(key, sizeof(key), "%020ld", k);
+				snprintf(key, sizeof(key), "%020lu", k);
 			}
+			DEBUG_INFO(4, "Insert key %s (k = %d)\n", key, i);
 			batch.Put(key, gen.Generate(value_size_));
 
 			done++;

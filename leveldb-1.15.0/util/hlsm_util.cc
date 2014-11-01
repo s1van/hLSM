@@ -437,7 +437,7 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
 
   /********* defined in hlsm_util.h *********/
 
-  void YCSBKeyGenerator::sort(long *num, int top, int bottom)
+  void YCSBKeyGenerator::sort(long long *num, int top, int bottom)
   {
   	int middle;
   	if (top < bottom)
@@ -449,12 +449,12 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
   	return;
   }
 
-  int YCSBKeyGenerator::partition(long *array, int top, int bottom)
+  int YCSBKeyGenerator::partition(long long *array, int top, int bottom)
   {
-  	long x = array[top];
+  	long long x = array[top];
   	int i = top - 1;
   	int j = bottom + 1;
-  	long temp;
+  	long long temp;
   	do
   	{
   		do
@@ -477,7 +477,7 @@ FullMirror_PosixWritableFile::~FullMirror_PosixWritableFile() {
   	return j;           // returns middle subscript
   }
 
-  long YCSBKeyGenerator::nextKey()
+  long long YCSBKeyGenerator::nextKey()
   {
   	return keypool[index++];
   }
