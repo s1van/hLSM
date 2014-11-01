@@ -165,6 +165,8 @@ public:
 		int done = 0, bnum = 0;
 		char key[100];
 
+		int keynum_per_file = (int) leveldb::config::kTargetFileSize/ (FLAGS_value_size + kv_pair_overhead_bytes);
+
 		//skip level 0
 		int level = 0;
 		int clevel_max_fnum = 0;
@@ -183,8 +185,9 @@ public:
 
 				// reinitialize ycsb generator for the new level
 				if (FLAGS_ycsb_compatible) {
-					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum + FLAGS_extra_files_per_level,
-							(int) leveldb::config::kTargetFileSize/ (FLAGS_value_size + kv_pair_overhead_bytes));
+					ycsb_gen = new hlsm::YCSBKeyGenerator(i,
+							std::min(clevel_max_fnum + FLAGS_extra_files_per_level, (FLAGS_num - i)/keynum_per_file + 2),
+							keynum_per_file);
 					DEBUG_INFO(2, "New level %d starts with %d (YCSBKeyGen), #keys = %d\n", level, i,
 							(clevel_max_fnum + FLAGS_extra_files_per_level) *
 							(int) leveldb::config::kTargetFileSize /
