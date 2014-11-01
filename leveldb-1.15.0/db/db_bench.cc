@@ -990,7 +990,7 @@ class Benchmark {
 
     DEBUG_INFO(1, "Read Thread reads %d k-v pairs, %d found\n", done, found);
     char msg[100];
-    snprintf(msg, sizeof(msg), "(%d of %d found)", found, done);
+    snprintf(msg, sizeof(msg), "(%d of %d found in one read thread)", found, done);
     thread->stats.AddMessage(msg);
 
     time(&now);

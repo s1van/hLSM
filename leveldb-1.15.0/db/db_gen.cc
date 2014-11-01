@@ -185,7 +185,10 @@ public:
 				if (FLAGS_ycsb_compatible) {
 					ycsb_gen = new hlsm::YCSBKeyGenerator(i, clevel_max_fnum + FLAGS_extra_files_per_level,
 							(int) leveldb::config::kTargetFileSize/ (FLAGS_value_size + kv_pair_overhead_bytes));
-					DEBUG_INFO(2, "New level %d starts with %d (YCSBKeyGen)\n", level, i);
+					DEBUG_INFO(2, "New level %d starts with %d (YCSBKeyGen), #keys = %d\n", level, i,
+							(clevel_max_fnum + FLAGS_extra_files_per_level) *
+							(int) leveldb::config::kTargetFileSize /
+							(FLAGS_value_size + kv_pair_overhead_bytes));
 				}
 
 				file_key_span = (int) (FLAGS_write_span / (clevel_max_fnum + FLAGS_extra_files_per_level));
