@@ -536,6 +536,9 @@ int init(leveldb::Env* env_) {
 			fprintf(stderr, "secondary_storage_path is NULL\n");
 			exit(0);
 		}
+	} else {
+		fprintf(stderr, "unknown mode\n");
+		exit(0);
 	}
 
 	if (use_opq_thread)
