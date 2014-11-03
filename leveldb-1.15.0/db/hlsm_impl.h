@@ -52,7 +52,7 @@ inline double calculate_compaction_score(int level, std::vector<leveldb::FileMet
 
         if (level == 1) {
 		score = std::max( TotalFileSize(files[level]) / MaxBytesForLevel(level) // LX.L
-			, (files[level-1].size() / (double)leveldb::config::kL0_StopWritesTrigger) );    // LX.R
+			, (files[level-1].size() / (double) KL0_STOP_WRITE_TRIGGER) );    // LX.R
 	} else if (level % 2 == 1) { // LX.L << LX.R > L(X+1).R
 		score = std::max( TotalFileSize(files[level]) / MaxBytesForLevel(level) // LX.L
 			,TotalFileSize(files[level-1]) / MaxBytesForLevel(level-1));    // LX.R

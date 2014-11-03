@@ -1303,6 +1303,8 @@ int main(int argc, char** argv) {
       FLAGS_random_seed = d;
     } else if (sscanf(argv[i], "--debug_level=%d%c", &n, &junk) == 1) {
       hlsm::config::debug_level = n;
+    } else if (sscanf(argv[i], "--level0_stop_write_trigger=%d%c", &n, &junk) == 1) {
+      hlsm::config::kL0_StopWritesTrigger = n;
     } else if (sscanf(argv[i], "--preload_metadata=%d%c", &n, &junk) == 1) {
       hlsm::config::preload_metadata = n;
     } else if (sscanf(argv[i], "--run_compaction=%d%c", &n, &junk) == 1) {

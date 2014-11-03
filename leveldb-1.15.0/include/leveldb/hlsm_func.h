@@ -14,6 +14,9 @@
 
 #define CALL_IF_HLSM(do_) do { if(hlsm::config::mode.ishLSM()) { DEBUG_INFO(3, "call if hlsm\n"); do_;} } while(0)
 
+#define KL0_STOP_WRITE_TRIGGER ( (hlsm::config::kL0_StopWritesTrigger > 0) \
+	? hlsm::config::kL0_StopWritesTrigger : leveldb::config::kL0_StopWritesTrigger)
+
 #define debug_detla_meta(meta_) \
 	DEBUG_INFO(3, "start: %u, clear: %u, active: %u\n", \
 			meta_->start, meta_->clear, meta_->active);
