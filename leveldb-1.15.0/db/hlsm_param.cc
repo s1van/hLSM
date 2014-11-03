@@ -32,7 +32,7 @@ bool run_compaction = true;
 bool iterator_prefetch = false;
 bool raw_prefetch = false;
 bool append_by_opq = false;
-bool use_mmap_file = true;
+bool use_mmap_file = false;
 double restrict_L0_score = 0;
 
 int debug_level = 0;
