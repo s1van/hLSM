@@ -77,7 +77,7 @@ END{work = work/1000; minor_work=minor_work/1000; major_mv_work=major_mv_work/10
 		if(title) printf("%s\t%s\t%s\t%s\t%s\n",
 			"#major #minor #mv #file",
 			"major.s mionr.s mv.s",
-			"thoughput file.s.avg",
+			"throughput file.s.avg",
 			"gap major.t minor.t mv.t",
 			"major.t.avg major.s.avg");
 		print major_c, minor_c, major_mv_c + mv_c, major_fnum, "\t",

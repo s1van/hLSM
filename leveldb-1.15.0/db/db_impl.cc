@@ -1083,7 +1083,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   if (hlsm::runtime::compaction_throttler != NULL) {
   	// add read and write bytes
   	hlsm::runtime::compaction_throttler->add(compact->total_bytes * 2);
-  	hlsm::runtime::compaction_throttler->throttle();
+  	DEBUG_MEASURE_RECORD(1, (hlsm::runtime::compaction_throttler->throttle()), "DoCompactionWork--Throttle");
   }
 
   return status;
@@ -1380,7 +1380,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
   assert(!writers_.empty());
   bool allow_delay = !force;
   Status s;
-  DEBUG_INFO(3, "Mem Usage: %lu\tBuffer Size: %lu\timm: %p\n",
+  DEBUG_INFO(3, "Mem Usage: %lu\tBuffer Size: %lu\time: %p\n",
   		mem_->ApproximateMemoryUsage(), options_.write_buffer_size, imm_);
   while (true) {
     if (!bg_error_.ok()) {
