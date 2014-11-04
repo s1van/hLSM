@@ -142,7 +142,7 @@ static void *opq_helper(void * arg) {
 				std::string sfname = PRIMARY_TO_SECONDARY_FILE((*fname));
 				bool file_exists = hlsm::runtime::env_->FileExists(sfname);
 				DEBUG_INFO(2, "MCopyFile\tfname: %s, exists: %d\n", fname->c_str(), file_exists);
-				if(!file_exists) {
+				if(!file_exists || hlsm::config::force_file_copy) {
 					assert(copy_file(sfname.c_str(), fname->c_str()) > 0);
 				}
 				uint64_t fnum = op->offset; // just for convenience

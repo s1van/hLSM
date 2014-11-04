@@ -34,6 +34,7 @@ bool iterator_prefetch = false;
 bool raw_prefetch = false;
 bool append_by_opq = false;
 bool use_mmap_file = false;
+bool force_file_copy = true; // set true for testing
 double restrict_L0_score = 0;
 
 int debug_level = 0;
