@@ -260,21 +260,9 @@ class PosixWritableFile : public leveldb::WritableFile {
   }
 };
 
+/**************** PosixBufferFile *****************/
 
-class PosixBufferFile : public leveldb::WritableFile {
- private:
-	std::string filename_;
-	FILE* file_;
-	int fd_;
-
-	int buffer_size_;
-	char* base_;            // The mapped region
-	char* limit_;           // Limit of the mapped region
-	char* dst_;             // Where to write next  (in range [base_,limit_])
-	uint64_t file_offset_;  // Offset of base_ in file
-
- public:
-  PosixBufferFile(const std::string& fname, FILE* f)
+PosixBufferFile::PosixBufferFile(const std::string& fname, FILE* f)
  	 : filename_(fname), file_(f),
        file_offset_(0){
 		buffer_size_ = 4<<20;
@@ -286,17 +274,17 @@ class PosixBufferFile : public leveldb::WritableFile {
   }
 
 
-  ~PosixBufferFile() {
+PosixBufferFile::~PosixBufferFile() {
     if (file_ != NULL) {
     	PosixBufferFile::Close();
     }
   }
 
-  std::string GetFileName() {
+  std::string PosixBufferFile::GetFileName() {
 	return filename_;
   }
 
-  virtual Status Append(const Slice& data, bool delayed_buf_reset = false) {
+  Status PosixBufferFile::Append(const Slice& data, bool delayed_buf_reset) {
     const char* src = data.data();
 
     size_t left = data.size();
@@ -322,7 +310,7 @@ class PosixBufferFile : public leveldb::WritableFile {
     return Status::OK();
   }
 
-  virtual Status Close() {
+  Status PosixBufferFile::Close() {
     Status s;
     OPQ_ADD_BUF_SYNC(OPQ, base_, Roundup(dst_-base_, BLKSIZE), fd_, file_offset_);
     OPQ_ADD_TRUNCATE(OPQ, fd_, file_offset_ + dst_-base_);
@@ -334,15 +322,14 @@ class PosixBufferFile : public leveldb::WritableFile {
     return s;
   }
 
-  virtual Status Flush() {
+  Status PosixBufferFile::Flush() {
     return Status::OK();
   }
 
-  virtual Status Sync() {
+  Status PosixBufferFile::Sync() {
 
     return Status::OK();
   }
-};
 
 
 FullMirror_PosixWritableFile::FullMirror_PosixWritableFile(const std::string& fname, FILE* f)

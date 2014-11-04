@@ -44,6 +44,27 @@ public:
 	virtual leveldb::Status Sync();
 };
 
+class PosixBufferFile : public leveldb::WritableFile {
+ private:
+	std::string filename_;
+	FILE* file_;
+	int fd_;
+
+	int buffer_size_;
+	char* base_;            // The mapped region
+	char* limit_;           // Limit of the mapped region
+	char* dst_;             // Where to write next  (in range [base_,limit_])
+	uint64_t file_offset_;  // Offset of base_ in file
+
+ public:
+  PosixBufferFile(const std::string& fname, FILE* f);
+  ~PosixBufferFile();
+  std::string GetFileName();
+  leveldb::Status Append(const leveldb::Slice& data, bool delayed_buf_reset = false);
+  leveldb::Status Close();
+  leveldb::Status Flush();
+  leveldb::Status Sync();
+};
 
 }
 
